@@ -1,0 +1,1017 @@
+{
+  "dumont,CO": {
+    "lat": 39.7646887,
+    "lon": -105.600337,
+    "source": "nominatim",
+    "city": "Dumont",
+    "state": "CO"
+  },
+  "saint johns,FL": {
+    "lat": 29.9032284,
+    "lon": -81.4145468,
+    "source": "nominatim",
+    "city": "Saint Johns",
+    "state": "FL"
+  },
+  "gansevoort,NY": {
+    "lat": 43.1962051,
+    "lon": -73.6513967,
+    "source": "nominatim",
+    "city": "Gansevoort",
+    "state": "NY"
+  },
+  "ruther glen,VA": {
+    "lat": 37.9408753,
+    "lon": -77.4618647,
+    "source": "nominatim",
+    "city": "Ruther Glen",
+    "state": "VA"
+  },
+  "heiskell,TN": {
+    "lat": 36.081816,
+    "lon": -84.0539821,
+    "source": "nominatim",
+    "city": "Heiskell",
+    "state": "TN"
+  },
+  "breezewood,PA": {
+    "lat": 39.9990119,
+    "lon": -78.2404221,
+    "source": "nominatim",
+    "city": "Breezewood",
+    "state": "PA"
+  },
+  "irving,NY": {
+    "lat": 42.5675589,
+    "lon": -79.1128169,
+    "source": "nominatim",
+    "city": "Irving",
+    "state": "NY"
+  },
+  "lambsburg,VA": {
+    "lat": 36.5854078,
+    "lon": -80.7611817,
+    "source": "nominatim",
+    "city": "Lambsburg",
+    "state": "VA"
+  },
+  "ivydale,WV": {
+    "lat": 38.310097,
+    "lon": -81.7045688,
+    "source": "nominatim",
+    "city": "Ivydale",
+    "state": "WV"
+  },
+  "raphine,VA": {
+    "lat": 37.9373548,
+    "lon": -79.2328102,
+    "source": "nominatim",
+    "city": "Raphine",
+    "state": "VA"
+  },
+  "mount nebo,WV": {
+    "lat": 39.6023047,
+    "lon": -79.7078303,
+    "source": "nominatim",
+    "city": "Mount Nebo",
+    "state": "WV"
+  },
+  "mineral wells,WV": {
+    "lat": 39.1904082,
+    "lon": -81.5320773,
+    "source": "nominatim",
+    "city": "Mineral Wells",
+    "state": "WV"
+  },
+  "knoxville,AL": {
+    "lat": 33.5917715,
+    "lon": -85.8971885,
+    "source": "nominatim",
+    "city": "Knoxville",
+    "state": "AL"
+  },
+  "hogansburg,NY": {
+    "lat": 44.9739364,
+    "lon": -74.6632416,
+    "source": "nominatim",
+    "city": "Hogansburg",
+    "state": "NY"
+  },
+  "west helena,AR": {
+    "lat": 34.5440124,
+    "lon": -90.6426195,
+    "source": "nominatim",
+    "city": "West Helena",
+    "state": "AR"
+  },
+  "pryor,OK": {
+    "lat": 36.3084275,
+    "lon": -95.3169136,
+    "source": "nominatim",
+    "city": "Pryor",
+    "state": "OK"
+  },
+  "rising fawn,GA": {
+    "lat": 34.7600791,
+    "lon": -85.531076,
+    "source": "nominatim",
+    "city": "Rising Fawn",
+    "state": "GA"
+  },
+  "jean,NV": {
+    "lat": 35.7788568,
+    "lon": -115.3243823,
+    "source": "nominatim",
+    "city": "Jean",
+    "state": "NV"
+  },
+  "bois d arc,MO": {
+    "lat": 37.2564382,
+    "lon": -93.507696,
+    "source": "nominatim",
+    "city": "Bois D Arc",
+    "state": "MO"
+  },
+  "la place,LA": {
+    "lat": 32.3784735,
+    "lon": -85.8627339,
+    "source": "nominatim",
+    "city": "La Place",
+    "state": "LA"
+  },
+  "belden,MS": {
+    "lat": 34.3103831,
+    "lon": -88.7883888,
+    "source": "nominatim",
+    "city": "Belden",
+    "state": "MS"
+  },
+  "candler,NC": {
+    "lat": 35.5444359,
+    "lon": -82.6838032,
+    "source": "nominatim",
+    "city": "Candler",
+    "state": "NC"
+  },
+  "glendale,KY": {
+    "lat": 37.6017278,
+    "lon": -85.9055189,
+    "source": "nominatim",
+    "city": "Glendale",
+    "state": "KY"
+  },
+  "waddy,KY": {
+    "lat": 38.1370153,
+    "lon": -85.0743978,
+    "source": "nominatim",
+    "city": "Waddy",
+    "state": "KY"
+  },
+  "sawyer,MI": {
+    "lat": 41.8853207,
+    "lon": -86.5894666,
+    "source": "nominatim",
+    "city": "Sawyer",
+    "state": "MI"
+  },
+  "linwood,NC": {
+    "lat": 35.7506938,
+    "lon": -80.3178306,
+    "source": "nominatim",
+    "city": "Linwood",
+    "state": "NC"
+  },
+  "west coxsackie,NY": {
+    "lat": 42.3606399,
+    "lon": -73.8167921,
+    "source": "nominatim",
+    "city": "West Coxsackie",
+    "state": "NY"
+  },
+  "millersville,MD": {
+    "lat": 39.0595542,
+    "lon": -76.6480219,
+    "source": "nominatim",
+    "city": "Millersville",
+    "state": "MD"
+  },
+  "de forest,WI": {
+    "lat": 43.753874,
+    "lon": -88.220808,
+    "source": "nominatim",
+    "city": "De Forest",
+    "state": "WI"
+  },
+  "antioch,TN": {
+    "lat": 36.0600602,
+    "lon": -86.6722192,
+    "source": "nominatim",
+    "city": "Antioch",
+    "state": "TN"
+  },
+  "denmark,TN": {
+    "lat": 35.5328546,
+    "lon": -89.003952,
+    "source": "nominatim",
+    "city": "Denmark",
+    "state": "TN"
+  },
+  "glenmont,NY": {
+    "lat": 42.604802,
+    "lon": -73.7695658,
+    "source": "nominatim",
+    "city": "Glenmont",
+    "state": "NY"
+  },
+  "grovertown,IN": {
+    "lat": 41.3750434,
+    "lon": -86.5047339,
+    "source": "nominatim",
+    "city": "Grovertown",
+    "state": "IN"
+  },
+  "greentown,PA": {
+    "lat": 41.321755,
+    "lon": -75.3054585,
+    "source": "nominatim",
+    "city": "Greentown",
+    "state": "PA"
+  },
+  "teays,WV": {
+    "lat": 38.4417571,
+    "lon": -81.9529125,
+    "source": "nominatim",
+    "city": "Teays",
+    "state": "WV"
+  },
+  "nashville,TN": {
+    "lat": 36.1622767,
+    "lon": -86.7742984,
+    "source": "nominatim",
+    "city": "Nashville",
+    "state": "TN"
+  },
+  "drums,PA": {
+    "lat": 41.018139,
+    "lon": -75.9949252,
+    "source": "nominatim",
+    "city": "Drums",
+    "state": "PA"
+  },
+  "tafton,PA": {
+    "lat": 41.404534,
+    "lon": -75.1829535,
+    "source": "nominatim",
+    "city": "Tafton",
+    "state": "PA"
+  },
+  "milldale,CT": {
+    "lat": 41.5661372,
+    "lon": -72.8999672,
+    "source": "nominatim",
+    "city": "Milldale",
+    "state": "CT"
+  },
+  "doswell,VA": {
+    "lat": 37.8601402,
+    "lon": -77.4641492,
+    "source": "nominatim",
+    "city": "Doswell",
+    "state": "VA"
+  },
+  "franksville,WI": {
+    "lat": 42.7600188,
+    "lon": -87.9134133,
+    "source": "nominatim",
+    "city": "Franksville",
+    "state": "WI"
+  },
+  "lawrence,MS": {
+    "lat": 31.5129753,
+    "lon": -90.1205396,
+    "source": "nominatim",
+    "city": "Lawrence",
+    "state": "MS"
+  },
+  "du bois,PA": {
+    "lat": 39.9938139,
+    "lon": -75.1749158,
+    "source": "nominatim",
+    "city": "Du Bois",
+    "state": "PA"
+  },
+  "elizabethport,NJ": {
+    "lat": 40.6501031,
+    "lon": -74.1870888,
+    "source": "nominatim",
+    "city": "Elizabethport",
+    "state": "NJ"
+  },
+  "macon,GA": {
+    "lat": 32.8406946,
+    "lon": -83.6324022,
+    "source": "nominatim",
+    "city": "Macon",
+    "state": "GA"
+  },
+  "edwards,IL": {
+    "lat": 38.410254,
+    "lon": -88.0584362,
+    "source": "nominatim",
+    "city": "Edwards",
+    "state": "IL"
+  },
+  "westover,MD": {
+    "lat": 38.1240114,
+    "lon": -75.7063171,
+    "source": "nominatim",
+    "city": "Westover",
+    "state": "MD"
+  },
+  "canton,MI": {
+    "lat": 32.612602,
+    "lon": -90.0367512,
+    "source": "nominatim",
+    "city": "Canton",
+    "state": "MI"
+  },
+  "west chesterfield,NH": {
+    "lat": 42.9042482,
+    "lon": -72.5156447,
+    "source": "nominatim",
+    "city": "West Chesterfield",
+    "state": "NH"
+  },
+  "waterfall,PA": {
+    "lat": 40.1275826,
+    "lon": -78.0627822,
+    "source": "nominatim",
+    "city": "Waterfall",
+    "state": "PA"
+  },
+  "townsend,VA": {
+    "lat": 37.1849815,
+    "lon": -75.958473,
+    "source": "nominatim",
+    "city": "Townsend",
+    "state": "VA"
+  },
+  "new boston,MI": {
+    "lat": 42.1625408,
+    "lon": -83.4029885,
+    "source": "nominatim",
+    "city": "New Boston",
+    "state": "MI"
+  },
+  "smiths creek,MI": {
+    "lat": 42.9139187,
+    "lon": -82.6038085,
+    "source": "nominatim",
+    "city": "Smiths Creek",
+    "state": "MI"
+  },
+  "lake ariel,PA": {
+    "lat": 41.4539745,
+    "lon": -75.382681,
+    "source": "nominatim",
+    "city": "Lake Ariel",
+    "state": "PA"
+  },
+  "clear brook,VA": {
+    "lat": 39.2564912,
+    "lon": -78.096111,
+    "source": "nominatim",
+    "city": "Clear Brook",
+    "state": "VA"
+  },
+  "lexington,KY": {
+    "lat": 38.0464066,
+    "lon": -84.4970393,
+    "source": "nominatim",
+    "city": "Lexington",
+    "state": "KY"
+  },
+  "de witt,IA": {
+    "lat": 41.8242643,
+    "lon": -90.538127,
+    "source": "nominatim",
+    "city": "De Witt",
+    "state": "IA"
+  },
+  "pendleton,KY": {
+    "lat": 38.6914606,
+    "lon": -84.3689142,
+    "source": "nominatim",
+    "city": "Pendleton",
+    "state": "KY"
+  },
+  "la salle,IL": {
+    "lat": 41.3333679,
+    "lon": -89.0917497,
+    "source": "nominatim",
+    "city": "La Salle",
+    "state": "IL"
+  },
+  "ottawa lake,MI": {
+    "lat": 41.7641517,
+    "lon": -83.7493869,
+    "source": "nominatim",
+    "city": "Ottawa Lake",
+    "state": "MI"
+  },
+  "midland,GA": {
+    "lat": 32.5748608,
+    "lon": -84.827152,
+    "source": "nominatim",
+    "city": "Midland",
+    "state": "GA"
+  },
+  "north oxford,MA": {
+    "lat": 42.1500947,
+    "lon": -71.8684054,
+    "source": "nominatim",
+    "city": "North Oxford",
+    "state": "MA"
+  },
+  "etters,PA": {
+    "lat": 40.2245912,
+    "lon": -76.8980809,
+    "source": "nominatim",
+    "city": "Etters",
+    "state": "PA"
+  },
+  "batesburg,SC": {
+    "lat": 33.9079201,
+    "lon": -81.5473262,
+    "source": "nominatim",
+    "city": "Batesburg",
+    "state": "SC"
+  },
+  "leesville,SC": {
+    "lat": 33.916532,
+    "lon": -81.5134368,
+    "source": "nominatim",
+    "city": "Leesville",
+    "state": "SC"
+  },
+  "round o,SC": {
+    "lat": 32.9371151,
+    "lon": -80.5409352,
+    "source": "nominatim",
+    "city": "Round O",
+    "state": "SC"
+  },
+  "pueblo of acoma,NM": {
+    "lat": 34.8960604,
+    "lon": -107.5819746,
+    "source": "nominatim",
+    "city": "Pueblo Of Acoma",
+    "state": "NM"
+  },
+  "hurricane mills,TN": {
+    "lat": 35.9711736,
+    "lon": -87.781969,
+    "source": "nominatim",
+    "city": "Hurricane Mills",
+    "state": "TN"
+  },
+  "fackler,AL": {
+    "lat": 34.7925827,
+    "lon": -85.9099775,
+    "source": "nominatim",
+    "city": "Fackler",
+    "state": "AL"
+  },
+  "fortson,GA": {
+    "lat": 33.3778914,
+    "lon": -84.2888119,
+    "source": "nominatim",
+    "city": "Fortson",
+    "state": "GA"
+  },
+  "isom,KY": {
+    "lat": 37.1878764,
+    "lon": -82.8987718,
+    "source": "nominatim",
+    "city": "Isom",
+    "state": "KY"
+  },
+  "newburg,MD": {
+    "lat": 38.3773478,
+    "lon": -76.9533055,
+    "source": "nominatim",
+    "city": "Newburg",
+    "state": "MD"
+  },
+  "ridgedale,MO": {
+    "lat": 36.5039535,
+    "lon": -93.2237919,
+    "source": "nominatim",
+    "city": "Ridgedale",
+    "state": "MO"
+  },
+  "harpursville,NY": {
+    "lat": 42.1784124,
+    "lon": -75.6246298,
+    "source": "nominatim",
+    "city": "Harpursville",
+    "state": "NY"
+  },
+  "brookpark,OH": {
+    "lat": 41.4197915,
+    "lon": -81.8238184,
+    "source": "nominatim",
+    "city": "Brookpark",
+    "state": "OH"
+  },
+  "feasterville trevose,PA": {
+    "lat": 40.1514065,
+    "lon": -74.9886785,
+    "source": "nominatim",
+    "city": "Feasterville Trevose",
+    "state": "PA"
+  },
+  "cross junction,VA": {
+    "lat": 39.3203785,
+    "lon": -78.2933382,
+    "source": "nominatim",
+    "city": "Cross Junction",
+    "state": "VA"
+  },
+  "larsen,WI": {
+    "lat": 44.1916501,
+    "lon": -88.623999,
+    "source": "nominatim",
+    "city": "Larsen",
+    "state": "WI"
+  },
+  "casa blanca,NM": {
+    "lat": 35.046318,
+    "lon": -107.4713938,
+    "source": "nominatim",
+    "city": "Casa Blanca",
+    "state": "NM"
+  },
+  "newton lower falls,MA": {
+    "lat": 42.3258005,
+    "lon": -71.2563409,
+    "source": "nominatim",
+    "city": "Newton Lower Falls",
+    "state": "MA"
+  },
+  "hartford,TN": {
+    "lat": 35.8167646,
+    "lon": -83.1432066,
+    "source": "nominatim",
+    "city": "Hartford",
+    "state": "TN"
+  },
+  "ellenwood,GA": {
+    "lat": 33.6101096,
+    "lon": -84.287978,
+    "source": "nominatim",
+    "city": "Ellenwood",
+    "state": "GA"
+  },
+  "milltown,MT": {
+    "lat": 46.8712952,
+    "lon": -113.8817192,
+    "source": "nominatim",
+    "city": "Milltown",
+    "state": "MT"
+  },
+  "skippers,VA": {
+    "lat": 36.6118169,
+    "lon": -77.5466463,
+    "source": "nominatim",
+    "city": "Skippers",
+    "state": "VA"
+  },
+  "middleton,MI": {
+    "lat": 43.1833659,
+    "lon": -84.7088895,
+    "source": "nominatim",
+    "city": "Middleton",
+    "state": "MI"
+  },
+  "hankamer,TX": {
+    "lat": 29.8582755,
+    "lon": -94.6268618,
+    "source": "nominatim",
+    "city": "Hankamer",
+    "state": "TX"
+  },
+  "newport,MI": {
+    "lat": 42.0022672,
+    "lon": -83.3085419,
+    "source": "nominatim",
+    "city": "Newport",
+    "state": "MI"
+  },
+  "hamptonville,NC": {
+    "lat": 36.0984684,
+    "lon": -80.760345,
+    "source": "nominatim",
+    "city": "Hamptonville",
+    "state": "NC"
+  },
+  "alvada,OH": {
+    "lat": 41.0503322,
+    "lon": -83.4018693,
+    "source": "nominatim",
+    "city": "Alvada",
+    "state": "OH"
+  },
+  "cedar grove,TN": {
+    "lat": 36.2517196,
+    "lon": -86.5277724,
+    "source": "nominatim",
+    "city": "Cedar Grove",
+    "state": "TN"
+  },
+  "middlesboro,KY": {
+    "lat": 36.6072968,
+    "lon": -83.7143317,
+    "source": "nominatim",
+    "city": "Middlesboro",
+    "state": "KY"
+  },
+  "providence forge,VA": {
+    "lat": 37.4424264,
+    "lon": -77.0439583,
+    "source": "nominatim",
+    "city": "Providence Forge",
+    "state": "VA"
+  },
+  "bethany,LA": {
+    "lat": 32.3737683,
+    "lon": -94.0379649,
+    "source": "nominatim",
+    "city": "Bethany",
+    "state": "LA"
+  },
+  "rabun gap,GA": {
+    "lat": 34.9572143,
+    "lon": -83.3864536,
+    "source": "nominatim",
+    "city": "Rabun Gap",
+    "state": "GA"
+  },
+  "joelton,TN": {
+    "lat": 36.3131076,
+    "lon": -86.8652772,
+    "source": "nominatim",
+    "city": "Joelton",
+    "state": "TN"
+  },
+  "ellabell,GA": {
+    "lat": 32.1235368,
+    "lon": -81.4856673,
+    "source": "nominatim",
+    "city": "Ellabell",
+    "state": "GA"
+  },
+  "supply,NC": {
+    "lat": 34.0176717,
+    "lon": -78.267499,
+    "source": "nominatim",
+    "city": "Supply",
+    "state": "NC"
+  },
+  "hot springs national park,AR": {
+    "lat": 34.5290712,
+    "lon": -93.0301402,
+    "source": "nominatim",
+    "city": "Hot Springs National Park",
+    "state": "AR"
+  },
+  "castle creek,NY": {
+    "lat": 42.2275753,
+    "lon": -75.918253,
+    "source": "nominatim",
+    "city": "Castle Creek",
+    "state": "NY"
+  },
+  "pioneer,TN": {
+    "lat": 36.4175798,
+    "lon": -84.3140995,
+    "source": "nominatim",
+    "city": "Pioneer",
+    "state": "TN"
+  },
+  "rosedale,VA": {
+    "lat": 36.9592782,
+    "lon": -81.9312351,
+    "source": "nominatim",
+    "city": "Rosedale",
+    "state": "VA"
+  },
+  "north billerica,MA": {
+    "lat": 42.5852621,
+    "lon": -71.2877645,
+    "source": "nominatim",
+    "city": "North Billerica",
+    "state": "MA"
+  },
+  "grassy butte,ND": {
+    "lat": 47.3952923,
+    "lon": -103.2490767,
+    "source": "nominatim",
+    "city": "Grassy Butte",
+    "state": "ND"
+  },
+  "roans prairie,TX": {
+    "lat": 30.5836549,
+    "lon": -95.943324,
+    "source": "nominatim",
+    "city": "Roans Prairie",
+    "state": "TX"
+  },
+  "drewryville,VA": {
+    "lat": 36.7157055,
+    "lon": -77.3063603,
+    "source": "nominatim",
+    "city": "Drewryville",
+    "state": "VA"
+  },
+  "la fayette,NY": {
+    "lat": 42.8925794,
+    "lon": -76.1060197,
+    "source": "nominatim",
+    "city": "La Fayette",
+    "state": "NY"
+  },
+  "maxwell,TX": {
+    "lat": 29.881897,
+    "lon": -97.7956423,
+    "source": "nominatim",
+    "city": "Maxwell",
+    "state": "TX"
+  },
+  "lanexa,VA": {
+    "lat": 37.4237573,
+    "lon": -76.9010753,
+    "source": "nominatim",
+    "city": "Lanexa",
+    "state": "VA"
+  },
+  "north jackson,OH": {
+    "lat": 41.1001272,
+    "lon": -80.8571741,
+    "source": "nominatim",
+    "city": "North Jackson",
+    "state": "OH"
+  },
+  "redford,MI": {
+    "lat": 42.3833698,
+    "lon": -83.2965971,
+    "source": "nominatim",
+    "city": "Redford",
+    "state": "MI"
+  },
+  "blakeslee,PA": {
+    "lat": 41.0925133,
+    "lon": -75.5926681,
+    "source": "nominatim",
+    "city": "Blakeslee",
+    "state": "PA"
+  },
+  "orla,TX": {
+    "lat": 31.8250149,
+    "lon": -103.9090099,
+    "source": "nominatim",
+    "city": "Orla",
+    "state": "TX"
+  },
+  "kodak,TN": {
+    "lat": 35.9745323,
+    "lon": -83.6268396,
+    "source": "nominatim",
+    "city": "Kodak",
+    "state": "TN"
+  },
+  "new hampton,NY": {
+    "lat": 41.4098658,
+    "lon": -74.4117435,
+    "source": "nominatim",
+    "city": "New Hampton",
+    "state": "NY"
+  },
+  "monroeton,PA": {
+    "lat": 41.7125751,
+    "lon": -76.4746649,
+    "source": "nominatim",
+    "city": "Monroeton",
+    "state": "PA"
+  },
+  "chappell hill,TX": {
+    "lat": 30.141529,
+    "lon": -96.2567185,
+    "source": "nominatim",
+    "city": "Chappell Hill",
+    "state": "TX"
+  },
+  "gladstone,VA": {
+    "lat": 37.5468094,
+    "lon": -78.8494619,
+    "source": "nominatim",
+    "city": "Gladstone",
+    "state": "VA"
+  },
+  "willow beach,AZ": {
+    "lat": 35.8697801,
+    "lon": -114.6600654,
+    "source": "nominatim",
+    "city": "Willow Beach",
+    "state": "AZ"
+  },
+  "woodford,VA": {
+    "lat": 38.1131886,
+    "lon": -77.4088708,
+    "source": "nominatim",
+    "city": "Woodford",
+    "state": "VA"
+  },
+  "curtis bay,MD": {
+    "lat": 39.2252188,
+    "lon": -76.5900312,
+    "source": "nominatim",
+    "city": "Curtis Bay",
+    "state": "MD"
+  },
+  "chesterfield,VA": {
+    "lat": 37.3859982,
+    "lon": -77.578509,
+    "source": "nominatim",
+    "city": "Chesterfield",
+    "state": "VA"
+  },
+  "rockville,VA": {
+    "lat": 37.7259779,
+    "lon": -77.6783239,
+    "source": "nominatim",
+    "city": "Rockville",
+    "state": "VA"
+  },
+  "gum spring,VA": {
+    "lat": 37.7755262,
+    "lon": -77.8968114,
+    "source": "nominatim",
+    "city": "Gum Spring",
+    "state": "VA"
+  },
+  "quinton,VA": {
+    "lat": 37.5327893,
+    "lon": -77.1154448,
+    "source": "nominatim",
+    "city": "Quinton",
+    "state": "VA"
+  },
+  "henrico,VA": {
+    "lat": 37.5131191,
+    "lon": -77.3465081,
+    "source": "nominatim",
+    "city": "Henrico",
+    "state": "VA"
+  },
+  "troy,VA": {
+    "lat": 37.9509737,
+    "lon": -78.2463934,
+    "source": "nominatim",
+    "city": "Troy",
+    "state": "VA"
+  },
+  "middlebury center,PA": {
+    "lat": 41.8436841,
+    "lon": -77.2744202,
+    "source": "nominatim",
+    "city": "Middlebury Center",
+    "state": "PA"
+  },
+  "irvington,AL": {
+    "lat": 30.5068623,
+    "lon": -88.2338925,
+    "source": "nominatim",
+    "city": "Irvington",
+    "state": "AL"
+  },
+  "diamond,OH": {
+    "lat": 41.0989463,
+    "lon": -81.022871,
+    "source": "nominatim",
+    "city": "Diamond",
+    "state": "OH"
+  },
+  "dewey,AZ": {
+    "lat": 34.5297551,
+    "lon": -112.2421149,
+    "source": "nominatim",
+    "city": "Dewey",
+    "state": "AZ"
+  },
+  "summerfield,FL": {
+    "lat": 29.0085924,
+    "lon": -82.0348092,
+    "source": "nominatim",
+    "city": "Summerfield",
+    "state": "FL"
+  },
+  "wall,TX": {
+    "lat": 31.3743455,
+    "lon": -100.30366,
+    "source": "nominatim",
+    "city": "Wall",
+    "state": "TX"
+  },
+  "tinnie,NM": {
+    "lat": 33.3705561,
+    "lon": -105.2263673,
+    "source": "nominatim",
+    "city": "Tinnie",
+    "state": "NM"
+  },
+  "saint croix,IN": {
+    "lat": 38.2239531,
+    "lon": -86.5863387,
+    "source": "nominatim",
+    "city": "Saint Croix",
+    "state": "IN"
+  },
+  "colgate,WI": {
+    "lat": 43.1928301,
+    "lon": -88.2067737,
+    "source": "nominatim",
+    "city": "Colgate",
+    "state": "WI"
+  },
+  "lenorah,TX": {
+    "lat": 32.30456,
+    "lon": -101.8762483,
+    "source": "nominatim",
+    "city": "Lenorah",
+    "state": "TX"
+  },
+  "brogue,PA": {
+    "lat": 39.8723546,
+    "lon": -76.4846387,
+    "source": "nominatim",
+    "city": "Brogue",
+    "state": "PA"
+  },
+  "clines corners,NM": {
+    "lat": 35.0094982,
+    "lon": -105.66918,
+    "source": "nominatim",
+    "city": "Clines Corners",
+    "state": "NM"
+  },
+  "eastaboga,AL": {
+    "lat": 33.6059367,
+    "lon": -86.0213587,
+    "source": "nominatim",
+    "city": "Eastaboga",
+    "state": "AL"
+  },
+  "hunt valley,MD": {
+    "lat": 39.4962709,
+    "lon": -76.6542571,
+    "source": "nominatim",
+    "city": "Hunt Valley",
+    "state": "MD"
+  },
+  "nottingham,MD": {
+    "lat": 39.3639964,
+    "lon": -76.4521842,
+    "source": "nominatim",
+    "city": "Nottingham",
+    "state": "MD"
+  },
+  "mcalpin,FL": {
+    "lat": 30.1396324,
+    "lon": -82.9440642,
+    "source": "nominatim",
+    "city": "Mc Alpin",
+    "state": "FL"
+  },
+  "winnabow,NC": {
+    "lat": 34.1493374,
+    "lon": -78.0936046,
+    "source": "nominatim",
+    "city": "Winnabow",
+    "state": "NC"
+  },
+  "kearneysville,WV": {
+    "lat": 39.3881556,
+    "lon": -77.8855516,
+    "source": "nominatim",
+    "city": "Kearneysville",
+    "state": "WV"
+  },
+  "canon,CO": {
+    "lat": 38.4422506,
+    "lon": -105.2348795,
+    "source": "nominatim",
+    "city": "Canon City",
+    "state": "CO"
+  }
+}
