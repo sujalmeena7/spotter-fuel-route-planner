@@ -196,7 +196,9 @@ def test_load_stations_zero_null_coordinates_in_db():
 
 
 @pytest.mark.django_db
-def test_all_checkable_stations_within_25_miles_of_city_centroid(ensure_db_stations_and_clean_cache):
+def test_all_checkable_stations_within_25_miles_of_city_centroid(
+    ensure_db_stations_and_clean_cache,
+):
     """Verify all checkable stations in data/stations_geocoded.csv are within 25 mi of city centroid."""
     import math
 

@@ -4,6 +4,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.routing.serializers import LocationSuggestionSerializer
 from apps.stations.gazetteer import GazetteerIndex
 
 
@@ -27,7 +28,7 @@ class LocationAutocompleteView(APIView):
                 type=int,
             ),
         ],
-        responses={200: list},
+        responses={200: LocationSuggestionSerializer(many=True)},
     )
     def get(self, request):
         query = request.query_params.get("q", "").strip()
