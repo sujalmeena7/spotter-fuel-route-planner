@@ -163,7 +163,6 @@ def _greedy_optimize_fuel(
             reach_indices.append(j)
 
         # Case 3: Can reach destination within R and no stop in reach is cheaper than current
-        # (Only applicable if currently at a real fuel station; virtual origin cannot sell fuel)
         if current_idx >= 0 and rem_miles <= r_max + epsilon:
             has_cheaper = any(
                 sorted_stops[j].price < current_price - epsilon for j in reach_indices
@@ -305,13 +304,15 @@ def consolidate_stops(
     stop_penalty_usd: float = 5.0,
     cluster_radius_miles: float = 2.0,
 ) -> PlanResult:
-    """Consolidate minor/wasteful stops into fewer, larger refueling purchases.
+    """Consolidate minor/wasteful stops into fewer, practical refueling purchases.
 
-    Iteratively attempts to exclude stops buying less than MIN_PURCHASE_GALLONS
-    (or prunable stops) if the route remains feasible and the total cost increases
-    by less than STOP_PENALTY_USD per eliminated stop.
+    1. In practical mode, origin fill buys at least MIN_PURCHASE_GALLONS or enough
+       to reach the next chosen stop, whichever is larger (capped at tank capacity).
+    2. Merges stops buying < MIN_PURCHASE_GALLONS into neighbouring stops when feasible
+       and cost increase is within STOP_PENALTY_USD per removed stop.
+    3. Guarantees arrival/departure consistency and non-last purchase >= MIN_PURCHASE_GALLONS.
     """
-    current_plan = _greedy_optimize_fuel(
+    initial_plan = _greedy_optimize_fuel(
         stops=stops,
         total_miles=total_miles,
         tank_gal=tank_gal,
@@ -319,90 +320,209 @@ def consolidate_stops(
         start_fuel=start_fuel,
         origin_radius=origin_radius,
     )
-    if not current_plan.stops:
-        return current_plan
+    if not initial_plan.stops:
+        return initial_plan
 
-    curr_stops = list(stops)
+    # Working list of stop dictionaries
+    st_list = [
+        {
+            "sequence": s.sequence,
+            "mile": s.mile,
+            "price_per_gallon": s.price_per_gallon,
+            "price_decimal": s.price_decimal,
+            "gallons_purchased": s.gallons_purchased,
+            "fuel_on_arrival_gallons": s.fuel_on_arrival_gallons,
+            "fuel_on_departure_gallons": s.fuel_on_departure_gallons,
+            "ref": s.ref,
+            "kind": s.kind,
+        }
+        for s in initial_plan.stops
+    ]
 
+    def recompute_flow(items: list[dict[str, Any]]) -> bool:
+        """Recompute arrival and departure gallons strictly adhering to burn rates."""
+        for idx in range(len(items)):
+            if idx == 0:
+                if start_fuel <= 0.0:
+                    items[idx]["fuel_on_arrival_gallons"] = 0.0
+                else:
+                    burn_to_first = (items[0]["mile"] - 0.0) / mpg
+                    items[idx]["fuel_on_arrival_gallons"] = round(start_fuel - burn_to_first, 4)
+            else:
+                dist = items[idx]["mile"] - items[idx - 1]["mile"]
+                items[idx]["fuel_on_arrival_gallons"] = round(
+                    items[idx - 1]["fuel_on_departure_gallons"] - (dist / mpg), 4
+                )
+            items[idx]["fuel_on_departure_gallons"] = round(
+                items[idx]["fuel_on_arrival_gallons"] + items[idx]["gallons_purchased"], 4
+            )
+            if (
+                items[idx]["fuel_on_arrival_gallons"] < -1e-4
+                or items[idx]["fuel_on_departure_gallons"] > tank_gal + 1e-4
+            ):
+                return False
+        dist_last = total_miles - items[-1]["mile"]
+        if items[-1]["fuel_on_departure_gallons"] < (dist_last / mpg) - 1e-4:
+            return False
+        return True
+
+    # 1. Enforce origin fill minimum purchase
+    if st_list[0]["kind"] == "origin_fill" or (st_list[0]["mile"] == 0.0 and start_fuel <= 0.0):
+        if len(st_list) > 1:
+            dist_next = st_list[1]["mile"] - st_list[0]["mile"]
+            min_needed = dist_next / mpg
+            target_orig = min(tank_gal, max(min_purchase_gallons, min_needed))
+        else:
+            min_needed = total_miles / mpg
+            target_orig = min(tank_gal, max(min_purchase_gallons, min_needed))
+
+        if st_list[0]["gallons_purchased"] < target_orig:
+            diff = target_orig - st_list[0]["gallons_purchased"]
+            st_list[0]["gallons_purchased"] = target_orig
+            st_list[0]["fuel_on_departure_gallons"] = (
+                st_list[0]["fuel_on_arrival_gallons"] + target_orig
+            )
+            extra = diff
+            for j in range(1, len(st_list)):
+                st_list[j]["fuel_on_arrival_gallons"] += extra
+                st_list[j]["fuel_on_departure_gallons"] += extra
+                if st_list[j]["fuel_on_departure_gallons"] > tank_gal:
+                    overflow = st_list[j]["fuel_on_departure_gallons"] - tank_gal
+                    st_list[j]["gallons_purchased"] = max(
+                        0.0, st_list[j]["gallons_purchased"] - overflow
+                    )
+                    st_list[j]["fuel_on_departure_gallons"] = tank_gal
+                    extra = 0.0
+                else:
+                    reduce_amt = min(st_list[j]["gallons_purchased"], extra)
+                    st_list[j]["gallons_purchased"] -= reduce_amt
+                    st_list[j]["fuel_on_departure_gallons"] -= reduce_amt
+                    extra -= reduce_amt
+                if extra <= 1e-6:
+                    break
+
+    recompute_flow(st_list)
+
+    # 2. Iteratively merge intermediate minor stops into neighbours
     while True:
-        # Eligible candidates for consolidation (exclude origin stop and large fills)
-        candidates = [
-            s
-            for s in current_plan.stops
-            if not (s.mile == 0.0 or getattr(s, "kind", "") == "origin_fill")
-            and s.gallons_purchased < tank_gal * 0.7
-        ]
-        # Evaluate small purchases (< min_purchase_gallons) first, sorted ascending by purchase
-        candidates = sorted(
-            candidates,
-            key=lambda s: (s.gallons_purchased >= min_purchase_gallons, s.gallons_purchased),
+        candidates = list(range(1, len(st_list) - 1))
+        candidates.sort(
+            key=lambda i: (
+                st_list[i]["gallons_purchased"] >= min_purchase_gallons,
+                st_list[i]["gallons_purchased"],
+            )
         )
 
-        improved = False
-        for ps in candidates:
-            # First try excluding just this station
-            test_stops = [
-                s
-                for s in curr_stops
-                if not (
-                    abs(s.mile - ps.mile) < 1e-4
-                    and abs(s.price - ps.price_per_gallon) < 1e-4
-                    and (ps.ref is None or s.ref == ps.ref)
-                )
-            ]
-            try:
-                cand_plan = _greedy_optimize_fuel(
-                    stops=test_stops,
-                    total_miles=total_miles,
-                    tank_gal=tank_gal,
-                    mpg=mpg,
-                    start_fuel=start_fuel,
-                    origin_radius=origin_radius,
-                )
-            except OptimizerError:
-                continue
+        merged_any = False
+        for i in candidates:
+            curr = st_list[i]
+            prev_m = st_list[i - 1]["mile"]
+            next_m = st_list[i + 1]["mile"]
+            gap = next_m - prev_m
 
-            delta_stops = len(current_plan.stops) - len(cand_plan.stops)
-            delta_cost = float(cand_plan.total_cost_usd - current_plan.total_cost_usd)
+            # Can the truck reach next stop directly from previous stop?
+            if gap <= (tank_gal * mpg) + 1e-6:
+                test_items = [dict(s) for j, s in enumerate(st_list) if j != i]
+                # Previous stop fills more if needed
+                needed_dep_prev = min(
+                    tank_gal, max(test_items[i - 1]["fuel_on_departure_gallons"], gap / mpg)
+                )
+                extra_prev = needed_dep_prev - test_items[i - 1]["fuel_on_departure_gallons"]
+                test_items[i - 1]["gallons_purchased"] += extra_prev
+                test_items[i - 1]["fuel_on_departure_gallons"] = needed_dep_prev
 
-            # If stop count didn't drop because another station at the same interchange/cluster was picked,
-            # try excluding all stations within the cluster radius.
-            if delta_stops == 0 and any(
-                abs(ns.mile - ps.mile) <= cluster_radius_miles for ns in cand_plan.stops
-            ):
-                test_stops_cluster = [
-                    s for s in curr_stops if abs(s.mile - ps.mile) > cluster_radius_miles
-                ]
-                try:
-                    cand_plan_cluster = _greedy_optimize_fuel(
-                        stops=test_stops_cluster,
-                        total_miles=total_miles,
-                        tank_gal=tank_gal,
-                        mpg=mpg,
-                        start_fuel=start_fuel,
-                        origin_radius=origin_radius,
+                fuel_arr_next = needed_dep_prev - (gap / mpg)
+                if fuel_arr_next >= -1e-4:
+                    needed_next = max(0.0, curr["gallons_purchased"] - extra_prev)
+                    test_items[i]["gallons_purchased"] += needed_next
+                    cost_old = curr["gallons_purchased"] * curr["price_per_gallon"]
+                    cost_new = (
+                        extra_prev * test_items[i - 1]["price_per_gallon"]
+                        + needed_next * test_items[i]["price_per_gallon"]
                     )
-                    d_stops_cl = len(current_plan.stops) - len(cand_plan_cluster.stops)
-                    d_cost_cl = float(
-                        cand_plan_cluster.total_cost_usd - current_plan.total_cost_usd
-                    )
-                    if d_stops_cl >= 1 and d_cost_cl < stop_penalty_usd * d_stops_cl:
-                        current_plan = cand_plan_cluster
-                        curr_stops = test_stops_cluster
-                        improved = True
+                    d_cost = cost_new - cost_old
+
+                    if d_cost < stop_penalty_usd and recompute_flow(test_items):
+                        st_list = test_items
+                        merged_any = True
                         break
-                except OptimizerError:
-                    pass
-            elif delta_stops >= 1 and delta_cost < stop_penalty_usd * delta_stops:
-                current_plan = cand_plan
-                curr_stops = test_stops
-                improved = True
-                break
 
-        if not improved:
+        if not merged_any:
             break
 
-    return current_plan
+    # 3. Ensure any remaining non-last stop buys at least min_purchase_gallons
+    for i in range(len(st_list) - 1):
+        if st_list[i]["gallons_purchased"] < min_purchase_gallons:
+            shortfall = min(
+                min_purchase_gallons - st_list[i]["gallons_purchased"],
+                tank_gal - st_list[i]["fuel_on_departure_gallons"],
+            )
+            if shortfall > 1e-4:
+                st_list[i]["gallons_purchased"] += shortfall
+                st_list[i]["fuel_on_departure_gallons"] += shortfall
+                extra = shortfall
+                for j in range(i + 1, len(st_list)):
+                    st_list[j]["fuel_on_arrival_gallons"] += extra
+                    st_list[j]["fuel_on_departure_gallons"] += extra
+                    if st_list[j]["fuel_on_departure_gallons"] > tank_gal:
+                        overflow = st_list[j]["fuel_on_departure_gallons"] - tank_gal
+                        st_list[j]["gallons_purchased"] = max(
+                            0.0, st_list[j]["gallons_purchased"] - overflow
+                        )
+                        st_list[j]["fuel_on_departure_gallons"] = tank_gal
+                        extra = 0.0
+                    else:
+                        red = min(st_list[j]["gallons_purchased"], extra)
+                        st_list[j]["gallons_purchased"] -= red
+                        st_list[j]["fuel_on_departure_gallons"] -= red
+                        extra -= red
+                    if extra <= 1e-6:
+                        break
+
+    recompute_flow(st_list)
+
+    # Rebuild PlannedStop results
+    final_stops: list[PlannedStop] = []
+    tot_gal = 0.0
+    tot_cost = Decimal("0.00")
+    has_orig = st_list[0]["kind"] == "origin_fill" or (
+        st_list[0]["mile"] == 0.0 and start_fuel <= 0.0
+    )
+    seq = 0 if has_orig else 1
+
+    for s in st_list:
+        bought = round(s["gallons_purchased"], 4)
+        if bought > 1e-6:
+            p_dec = Decimal(str(round(s["price_per_gallon"], 3))).quantize(Decimal("0.001"))
+            s_cost = (Decimal(str(bought)) * p_dec).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            tot_gal += bought
+            tot_cost += s_cost
+            final_stops.append(
+                PlannedStop(
+                    sequence=seq,
+                    mile=round(s["mile"], 2),
+                    price_per_gallon=round(s["price_per_gallon"], 3),
+                    price_decimal=p_dec,
+                    gallons_purchased=bought,
+                    cost_usd=s_cost,
+                    fuel_on_arrival_gallons=round(s["fuel_on_arrival_gallons"], 2),
+                    fuel_on_departure_gallons=round(s["fuel_on_departure_gallons"], 2),
+                    ref=s["ref"],
+                    kind="origin_fill" if (seq == 0 and s["mile"] == 0.0) else "fuel_stop",
+                )
+            )
+            seq += 1
+
+    return PlanResult(
+        total_gallons=round(tot_gal, 4),
+        total_cost_usd=tot_cost,
+        stops=final_stops,
+        start_fuel_gallons=start_fuel,
+        tank_gallons=tank_gal,
+        mpg=mpg,
+    )
 
 
 def optimize_fuel(

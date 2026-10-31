@@ -300,11 +300,18 @@ def test_practical_stop_consolidation_ny_to_la():
 
     # In pure greedy, NY->LA has 19 stops (with origin fill)
     assert pure_stops_count == 19
-    # In practical mode, stops must be consolidated to <= 11
-    assert practical_stops_count <= 11
+    # In practical mode, stops must be consolidated to <= 9
+    assert practical_stops_count <= 9, f"Expected <= 9 stops, got {practical_stops_count}"
     # Total cost must be within 2% of pure cost optimum
     assert practical_cost <= 1.02 * pure_cost
     assert practical_cost >= pure_cost
+
+    # Every stop except possibly the last must purchase >= MIN_PURCHASE_GALLONS
+    min_purchase = 10.0
+    for ps in practical_plan.stops[:-1]:
+        assert ps.gallons_purchased >= min_purchase - 1e-4, (
+            f"NY->LA: Stop at {ps.mile} buys {ps.gallons_purchased} < {min_purchase}"
+        )
 
 
 @pytest.mark.django_db
@@ -404,3 +411,9 @@ def test_practical_cost_ge_cost_mode_benchmark_routes():
         assert float(p_res.total_cost_usd) >= float(c_res.total_cost_usd) - 1e-6, (
             f"{name}: practical={p_res.total_cost_usd} < cost={c_res.total_cost_usd}"
         )
+        # Every stop except possibly the last must purchase >= MIN_PURCHASE_GALLONS in practical mode
+        min_purchase = 10.0
+        for ps in p_res.stops[:-1]:
+            assert ps.gallons_purchased >= min_purchase - 1e-4, (
+                f"{name}: stop at mile {ps.mile} buys {ps.gallons_purchased} < {min_purchase}"
+            )
