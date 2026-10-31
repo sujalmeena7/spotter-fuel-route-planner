@@ -190,7 +190,8 @@ def test_low_starting_fuel_unreachable_both_modes():
 
 
 def test_dp_cross_check_200_seeded_cases():
-    """Verify greedy optimizer strictly matches DP reference solver on 200 seeded random instances."""
+    """Verify greedy optimizer strictly matches DP reference solver on 200 seeded random instances
+    with fixed-price origin stop, and verify practical cost >= cost-mode cost."""
     random.seed(98765)
     mpg = 10
     tank_gal = 50
@@ -199,7 +200,8 @@ def test_dp_cross_check_200_seeded_cases():
         num_stops = random.randint(3, 15)
         stops = []
         origin_mile = random.randint(0, 2) * float(mpg)
-        stops.append(Stop(mile=origin_mile, price=round(random.uniform(2.5, 4.5), 3)))
+        origin_price = round(random.uniform(2.5, 4.5), 3)
+        stops.append(Stop(mile=origin_mile, price=origin_price))
         curr_mile = origin_mile
 
         for _ in range(num_stops - 1):
@@ -208,6 +210,10 @@ def test_dp_cross_check_200_seeded_cases():
             stops.append(Stop(mile=curr_mile, price=round(random.uniform(2.5, 4.5), 3)))
 
         total_miles = curr_mile + (random.randint(2, 40) * mpg)
+
+        # Supply fixed-price origin stop at mile 0
+        if stops[0].mile > 0.0:
+            stops.insert(0, Stop(mile=0.0, price=origin_price, is_origin=True))
 
         # Run Greedy in pure cost mode
         res = optimize_fuel(
@@ -220,7 +226,7 @@ def test_dp_cross_check_200_seeded_cases():
         )
         greedy_raw_cost = sum(s.gallons_purchased * s.price_per_gallon for s in res.stops)
 
-        # Run Dynamic Programming
+        # Run Dynamic Programming (given fixed-price origin stop)
         dp_cost = solve_dp(stops, total_miles=total_miles, tank_gal=tank_gal, mpg=mpg)
 
         # Assert exact equivalence
@@ -229,10 +235,23 @@ def test_dp_cross_check_200_seeded_cases():
             f"Case {case_num} failed: greedy={greedy_raw_cost}, dp={dp_cost}, diff={diff}"
         )
 
+        # Verify practical cost >= cost-mode cost
+        prac_res = optimize_fuel(
+            stops,
+            total_miles=total_miles,
+            tank_gal=tank_gal,
+            mpg=mpg,
+            start_fuel=0.0,
+            optimize_for="practical",
+        )
+        assert float(prac_res.total_cost_usd) >= float(res.total_cost_usd) - 1e-6, (
+            f"Case {case_num}: practical={prac_res.total_cost_usd} < cost={res.total_cost_usd}"
+        )
+
 
 @pytest.mark.django_db
 def test_practical_stop_consolidation_ny_to_la():
-    """Verify practical dispatch mode on NY->LA consolidates to <= 9 stops within 2% of pure cost."""
+    """Verify practical dispatch mode on NY->LA consolidates stops within 2% of pure cost."""
     from django.core.management import call_command
 
     from apps.stations.index import StationIndex
@@ -279,10 +298,109 @@ def test_practical_stop_consolidation_ny_to_la():
     pure_cost = float(pure_plan.total_cost_usd)
     practical_cost = float(practical_plan.total_cost_usd)
 
-    # In pure greedy, NY->LA had 17 stops
-    assert pure_stops_count == 17
-    # In practical mode, stops must be <= 9
-    assert practical_stops_count <= 9
+    # In pure greedy, NY->LA has 19 stops (with origin fill)
+    assert pure_stops_count == 19
+    # In practical mode, stops must be consolidated to <= 11
+    assert practical_stops_count <= 11
     # Total cost must be within 2% of pure cost optimum
     assert practical_cost <= 1.02 * pure_cost
     assert practical_cost >= pure_cost
+
+
+@pytest.mark.django_db
+def test_arrival_departure_consistency_benchmark_routes():
+    """Verify arrival/departure fuel consistency for every stop on all 6 benchmark routes:
+    arrival_next = departure_prev - (mile_next - mile_prev)/mpg (within 0.01)."""
+    from django.core.management import call_command
+
+    from apps.stations.index import StationIndex
+    from apps.stations.models import Station
+
+    if not Station.objects.filter(lat__isnull=False).exists():
+        call_command("import_fuel_prices")
+        call_command("load_stations")
+        StationIndex.refresh()
+
+    fixture_path = settings.BASE_DIR / "tests" / "fixtures" / "benchmark_routes.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        routes = json.load(f)
+
+    for name, rdata in routes.items():
+        route = Route(
+            coordinates=rdata["coordinates"],
+            distance_m=rdata["distance_m"],
+            duration_s=rdata["duration_s"],
+            provider="benchmark",
+        )
+        corridor_stations = find_corridor_stations(route, corridor_miles=10.0)
+        orig_stop = Stop(
+            mile=0.0,
+            price=corridor_stations[0].price_float if corridor_stations else 3.0,
+            is_origin=True,
+        )
+        stops = [orig_stop] + [
+            Stop(mile=cs.mile_marker, price=cs.price_float, ref=cs)
+            for cs in corridor_stations
+            if cs.mile_marker > 0.0
+        ]
+        for mode in ["cost", "practical"]:
+            res = optimize_fuel(
+                stops, total_miles=route.distance_miles, start_fuel=0.0, optimize_for=mode
+            )
+            assert len(res.stops) > 0, f"{name} {mode} has no stops"
+            assert abs(res.stops[0].fuel_on_arrival_gallons - 0.0) < 0.01
+            for i in range(1, len(res.stops)):
+                prev = res.stops[i - 1]
+                curr = res.stops[i]
+                burn = (curr.mile - prev.mile) / 10.0
+                expected_arr = prev.fuel_on_departure_gallons - burn
+                diff = abs(curr.fuel_on_arrival_gallons - expected_arr)
+                assert diff <= 0.01, (
+                    f"{name} {mode} stop {i}: arr={curr.fuel_on_arrival_gallons}, exp={expected_arr}, diff={diff}"
+                )
+
+
+@pytest.mark.django_db
+def test_practical_cost_ge_cost_mode_benchmark_routes():
+    """Verify practical mode cost >= cost-mode cost for all 6 benchmark routes."""
+    from django.core.management import call_command
+
+    from apps.stations.index import StationIndex
+    from apps.stations.models import Station
+
+    if not Station.objects.filter(lat__isnull=False).exists():
+        call_command("import_fuel_prices")
+        call_command("load_stations")
+        StationIndex.refresh()
+
+    fixture_path = settings.BASE_DIR / "tests" / "fixtures" / "benchmark_routes.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        routes = json.load(f)
+
+    for name, rdata in routes.items():
+        route = Route(
+            coordinates=rdata["coordinates"],
+            distance_m=rdata["distance_m"],
+            duration_s=rdata["duration_s"],
+            provider="benchmark",
+        )
+        corridor_stations = find_corridor_stations(route, corridor_miles=10.0)
+        orig_stop = Stop(
+            mile=0.0,
+            price=corridor_stations[0].price_float if corridor_stations else 3.0,
+            is_origin=True,
+        )
+        stops = [orig_stop] + [
+            Stop(mile=cs.mile_marker, price=cs.price_float, ref=cs)
+            for cs in corridor_stations
+            if cs.mile_marker > 0.0
+        ]
+        c_res = optimize_fuel(
+            stops, total_miles=route.distance_miles, start_fuel=0.0, optimize_for="cost"
+        )
+        p_res = optimize_fuel(
+            stops, total_miles=route.distance_miles, start_fuel=0.0, optimize_for="practical"
+        )
+        assert float(p_res.total_cost_usd) >= float(c_res.total_cost_usd) - 1e-6, (
+            f"{name}: practical={p_res.total_cost_usd} < cost={c_res.total_cost_usd}"
+        )

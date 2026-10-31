@@ -214,7 +214,15 @@ export function setupPanel({
         const minPrice = prices.length ? Math.min(...prices) : 3.0;
         const maxPrice = prices.length ? Math.max(...prices) : 4.0;
 
+        const warningsHtml = (meta.warnings && meta.warnings.length) ? `
+            <div class="warning-banner" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: var(--color-warning, #d97706); display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span>
+                <span>${meta.warnings.join(' · ')}</span>
+            </div>
+        ` : '';
+
         let timelineHtml = `
+            ${warningsHtml}
             <div class="itinerary-header">
                 <h3>Trip Itinerary</h3>
                 <span class="badge-stops">${stops.length} Refueling Stop${stops.length === 1 ? '' : 's'}</span>
@@ -240,22 +248,24 @@ export function setupPanel({
         stops.forEach((s) => {
             const distFromLast = Math.round(s.mile_marker - lastMile);
             const tier = getPriceTier(parseFloat(s.price_per_gallon), minPrice, maxPrice);
+            const isOriginFill = s.kind === 'origin_fill' || s.sequence === 0;
 
             timelineHtml += `
                 <!-- Inter-stop Distance Indicator -->
+                ${distFromLast > 0 ? `
                 <div class="timeline-gap">
                     <span class="gap-label">— ${distFromLast} miles —</span>
-                </div>
+                </div>` : ''}
 
                 <!-- Stop Card -->
-                <div class="timeline-step fuel-stop-step" id="timeline-stop-${s.sequence}" data-sequence="${s.sequence}">
+                <div class="timeline-step ${isOriginFill ? 'origin-fill-step' : 'fuel-stop-step'}" id="timeline-stop-${s.sequence}" data-sequence="${s.sequence}">
                     <div class="step-marker-col">
-                        <div class="stop-badge ${tier.class}">${s.sequence}</div>
+                        <div class="stop-badge ${isOriginFill ? 'origin-badge' : tier.class}">${s.sequence}</div>
                         <div class="step-line"></div>
                     </div>
-                    <div class="step-card stop-card">
+                    <div class="step-card stop-card ${isOriginFill ? 'origin-fill-card' : ''}">
                         <div class="step-title-row">
-                            <span class="step-name">${s.name}</span>
+                            <span class="step-name">${isOriginFill ? `⛽ ${s.name}` : s.name}</span>
                             <span class="price-chip ${tier.class}">${formatPrice(s.price_per_gallon)} · ${tier.label}</span>
                         </div>
                         <div class="step-address">${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>

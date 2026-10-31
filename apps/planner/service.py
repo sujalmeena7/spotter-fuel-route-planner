@@ -17,6 +17,7 @@ from apps.routing.providers import (
     get_routing_provider,
     reset_call_counter,
 )
+from apps.stations.index import StationIndex
 
 
 class RoutePlanService:
@@ -107,6 +108,8 @@ class RoutePlanService:
                 "local_compute_ms": elapsed_ms,
                 "total_ms": elapsed_ms,
             }
+            if "warnings" in cached_payload.get("meta", {}):
+                payload["meta"]["warnings"] = cached_payload["meta"]["warnings"]
             return payload
 
         # Cold request: reset call counter
@@ -125,10 +128,52 @@ class RoutePlanService:
         # 3. Corridor stations
         corridor_stations = find_corridor_stations(route, corridor_miles=corridor_mi)
 
-        # 4. Fuel optimization
-        optimizer_stops = [
-            Stop(mile=cs.mile_marker, price=cs.price_float, ref=cs) for cs in corridor_stations
-        ]
+        # 4. Handle origin fueling when start_fuel <= 0.0
+        meta_warnings: list[str] = []
+        origin_cs: CorridorStation | None = None
+        if start_fuel <= 0.0:
+            st_idx = StationIndex.get_instance()
+            if len(st_idx) > 0:
+                nearest_idx, dist_orig = st_idx.find_nearest(origin.lat, origin.lon)
+                st_name = str(st_idx.names[nearest_idx])
+                st_price_f = float(st_idx.prices[nearest_idx])
+                st_price_dec = st_idx.prices_decimal[nearest_idx]
+                st_id = int(st_idx.ids[nearest_idx])
+                st_addr = str(st_idx.addresses[nearest_idx])
+                st_city = str(st_idx.cities[nearest_idx])
+                st_state = str(st_idx.states[nearest_idx])
+                st_lat = float(st_idx.lats[nearest_idx])
+                st_lon = float(st_idx.lons[nearest_idx])
+
+                if dist_orig > origin_rad:
+                    meta_warnings.append(
+                        f"No station within {int(origin_rad)} mi of origin; origin fill priced at nearest station ({dist_orig:.1f} mi)"
+                    )
+
+                origin_cs = CorridorStation(
+                    station_id=st_id,
+                    name=f"Origin fill (priced at {st_name}, {dist_orig:.1f} mi away)",
+                    address=st_addr,
+                    city=st_city,
+                    state=st_state,
+                    lat=st_lat,
+                    lon=st_lon,
+                    price=st_price_dec,
+                    price_float=st_price_f,
+                    mile_marker=0.0,
+                    off_route_miles=round(dist_orig, 2),
+                )
+
+        # Fuel optimization stops
+        optimizer_stops: list[Stop] = []
+        if origin_cs is not None:
+            optimizer_stops.append(
+                Stop(mile=0.0, price=origin_cs.price_float, ref=origin_cs, is_origin=True)
+            )
+        for cs in corridor_stations:
+            if cs.mile_marker > 0.0:
+                optimizer_stops.append(Stop(mile=cs.mile_marker, price=cs.price_float, ref=cs))
+
         plan_res = optimize_fuel(
             stops=optimizer_stops,
             total_miles=route.distance_miles,
@@ -194,6 +239,7 @@ class RoutePlanService:
             fuel_stops.append(
                 {
                     "sequence": ps.sequence,
+                    "kind": ps.kind,
                     "station_id": cs.station_id,
                     "name": cs.name,
                     "address": cs.address,
@@ -292,6 +338,8 @@ class RoutePlanService:
                 f"Corridor {int(corridor_mi)} mi",
             ],
         }
+        if meta_warnings:
+            meta["warnings"] = meta_warnings
 
         payload = {
             "summary": summary,

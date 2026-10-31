@@ -100,9 +100,16 @@ Let $x$ be the truck's current position and fuel level $f$. Let $S_{\text{reach}
    - Next stop: pick the reachable station with minimum price, breaking ties by choosing the **farthest** station to minimize unnecessary stop overhead.
 3. **Finish Line Within Reach**: If destination is reachable with current fuel, buy 0. If destination is reachable with a full tank, buy only enough to reach finish.
 
+### Origin Fueling Model & Physical Consistency
+- **Fixed-Price Origin Stop**: When a truck departs empty ($S = 0$), a virtual origin stop is inserted at Mile 0.0 with fuel price fixed to the retail station nearest to the origin coordinates by straight-line distance. The truck purchases departure fuel at this fixed price under standard greedy rules.
+- **Physical Arrival/Departure Invariant**: Without artificial "approach fuel" approximations, fuel state transitions are strictly conserved across every leg:
+  $$\text{fuel\_on\_arrival}_{k} = \text{fuel\_on\_departure}_{k-1} - \frac{\text{mile}_{k} - \text{mile}_{k-1}}{\text{MPG}} \quad (\pm 0.01\text{ gal})$$
+- **Origin Distance Warning**: If the nearest retail station exceeds `ORIGIN_RADIUS_MILES` (25 miles), `meta.warnings` includes an advisory note (e.g. for Houston, TX where the nearest station is 40.0 miles away).
+
 ### Dynamic Programming Verification (200 Seeded Cases)
 To prove optimality, `tests/planner/test_optimizer.py` implements a discretized Dynamic Programming solver (`dp_reference.py`) that searches all state transitions over $(mile, fuel\_level)$ grids.
-- Across **200 seeded random route configurations** with randomized station spacing, prices, and starting fuel levels, the greedy optimizer matched the DP global minimum on **100.0% of test cases** ($< 1\text{e-}6$ difference).
+- Across **200 seeded random route configurations** with randomized station spacing, prices, and starting fuel levels, the greedy optimizer matched the DP global minimum on **100.0% of test cases** ($< 1\text{e-}6$ difference), with DP given the identical fixed-price origin stop.
+- **Practical Mode Invariant**: Across all 200 instances and the 6 benchmark corridors, stop consolidation satisfies $\text{cost}_{\text{practical}} \ge \text{cost}_{\text{cost}}$ while reducing unnecessary minor stops.
 - **Time Complexity**: Greedy runs in $O(n \log n)$ compared to DP's $O(n \cdot |F|^2)$, executing in $< 0.5$ ms.
 
 ---

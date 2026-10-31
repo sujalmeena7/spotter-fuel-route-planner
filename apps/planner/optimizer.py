@@ -35,6 +35,7 @@ class Stop:
     mile: float
     price: float
     ref: Any = None
+    is_origin: bool = False
 
 
 @dataclass
@@ -50,6 +51,7 @@ class PlannedStop:
     fuel_on_arrival_gallons: float
     fuel_on_departure_gallons: float
     ref: Any = None
+    kind: str = "fuel_stop"
 
 
 @dataclass
@@ -102,28 +104,27 @@ def _greedy_optimize_fuel(
     purchases: dict[int, dict[str, float]] = {}
 
     if start_fuel <= 0.0:
-        # Truck starts empty: must fuel at origin stop
-        origin_candidates = [s for s in sorted_stops if s.mile <= origin_radius]
-        if origin_candidates:
-            origin_stop = min(origin_candidates, key=lambda s: s.price)
-        elif sorted_stops and sorted_stops[0].mile <= r_max:
-            origin_stop = sorted_stops[0]
-        else:
+        # Truck starts empty: must fuel at origin stop (mile 0.0)
+        if not sorted_stops:
             raise NoFuelNearOrigin("No fuel station is reachable near route origin.")
 
-        current_idx = sorted_stops.index(origin_stop)
-        current_mile = origin_stop.mile
+        if sorted_stops[0].mile > 0.0:
+            if sorted_stops[0].mile > r_max:
+                raise NoFuelNearOrigin("No fuel station is reachable near route origin.")
+            origin_stop = Stop(
+                mile=0.0,
+                price=sorted_stops[0].price,
+                ref=sorted_stops[0].ref,
+                is_origin=True,
+            )
+            sorted_stops = [origin_stop] + sorted_stops
+        else:
+            origin_stop = sorted_stops[0]
+
+        current_idx = 0
+        current_mile = 0.0
         current_price = origin_stop.price
-
-        # Approach fuel burned reaching origin stop is billed at origin price
-        approach_gallons = current_mile / mpg
         current_fuel = 0.0
-
-        purchases[current_idx] = {
-            "purchased": approach_gallons,
-            "arrival": 0.0,
-            "departure": approach_gallons,
-        }
     else:
         # Truck starts with initial fuel at virtual origin
         if total_miles <= start_fuel * mpg + 1e-9:
@@ -152,13 +153,14 @@ def _greedy_optimize_fuel(
         if rem_miles <= current_fuel * mpg + epsilon:
             break
 
-        # Calculate reachable set
+        # Calculate reachable set (sorted_stops is sorted by mile, so break as soon as out of range)
         effective_range = current_fuel * mpg if current_idx == -1 else r_max
-        reach_indices = [
-            j
-            for j in range(current_idx + 1, n_stops)
-            if sorted_stops[j].mile - current_mile <= effective_range + epsilon
-        ]
+        max_reach_mile = current_mile + effective_range + epsilon
+        reach_indices = []
+        for j in range(current_idx + 1, n_stops):
+            if sorted_stops[j].mile > max_reach_mile:
+                break
+            reach_indices.append(j)
 
         # Case 3: Can reach destination within R and no stop in reach is cheaper than current
         # (Only applicable if currently at a real fuel station; virtual origin cannot sell fuel)
@@ -178,10 +180,7 @@ def _greedy_optimize_fuel(
 
         # Case 4: There is a cheaper stop in reach -> travel to the NEAREST such stop
         cheaper_indices = [
-            j
-            for j in range(current_idx + 1, n_stops)
-            if sorted_stops[j].mile - current_mile <= effective_range + epsilon
-            and sorted_stops[j].price < current_price - epsilon
+            j for j in reach_indices if sorted_stops[j].price < current_price - epsilon
         ]
 
         if cheaper_indices:
@@ -243,9 +242,16 @@ def _greedy_optimize_fuel(
     planned_stops: list[PlannedStop] = []
     total_gallons = 0.0
     total_cost = Decimal("0.00")
-    seq = 1
 
-    for idx, p in sorted(purchases.items(), key=lambda item: sorted_stops[item[0]].mile):
+    purchased_items = sorted(purchases.items(), key=lambda item: sorted_stops[item[0]].mile)
+    has_origin_fill = bool(
+        purchased_items
+        and sorted_stops[purchased_items[0][0]].mile == 0.0
+        and (start_fuel <= 0.0 or getattr(sorted_stops[purchased_items[0][0]], "is_origin", False))
+    )
+    seq = 0 if has_origin_fill else 1
+
+    for idx, p in purchased_items:
         bought = p["purchased"]
         if bought > 1e-6:
             st = sorted_stops[idx]
@@ -256,6 +262,11 @@ def _greedy_optimize_fuel(
 
             total_gallons += bought
             total_cost += stop_cost
+
+            is_orig = (st.mile == 0.0 and getattr(st, "is_origin", False)) or (
+                seq == 0 and st.mile == 0.0
+            )
+            stop_kind = "origin_fill" if is_orig else "fuel_stop"
 
             planned_stops.append(
                 PlannedStop(
@@ -268,6 +279,7 @@ def _greedy_optimize_fuel(
                     fuel_on_arrival_gallons=round(p["arrival"], 2),
                     fuel_on_departure_gallons=round(p["departure"], 2),
                     ref=st.ref,
+                    kind=stop_kind,
                 )
             )
             seq += 1
@@ -313,9 +325,12 @@ def consolidate_stops(
     curr_stops = list(stops)
 
     while True:
-        # Eligible candidates for consolidation (exclude origin stop if truck starts empty)
+        # Eligible candidates for consolidation (exclude origin stop and large fills)
         candidates = [
-            s for s in current_plan.stops if not (start_fuel <= 0.0 and s.mile <= origin_radius)
+            s
+            for s in current_plan.stops
+            if not (s.mile == 0.0 or getattr(s, "kind", "") == "origin_fill")
+            and s.gallons_purchased < tank_gal * 0.7
         ]
         # Evaluate small purchases (< min_purchase_gallons) first, sorted ascending by purchase
         candidates = sorted(

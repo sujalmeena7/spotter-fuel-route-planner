@@ -70,6 +70,13 @@ class Command(BaseCommand):
         t_w0 = time.perf_counter()
         StationIndex.get_instance()
         LocationResolver.resolve("Dallas, TX")
+        dummy_route = Route(
+            coordinates=[[-96.79, 32.77], [-96.80, 32.78]],
+            distance_m=1000,
+            duration_s=60,
+            provider="warmup",
+        )
+        find_corridor_stations(dummy_route, corridor_miles=10.0)
         warmup_ms = (time.perf_counter() - t_w0) * 1000
         self.stdout.write(f"Index warmed in {warmup_ms:.1f} ms\n")
 

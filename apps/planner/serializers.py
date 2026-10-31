@@ -56,6 +56,7 @@ class RoutePlanSummarySerializer(serializers.Serializer):
 
 class FuelStopSerializer(serializers.Serializer):
     sequence = serializers.IntegerField()
+    kind = serializers.CharField(required=False, default="fuel_stop")
     station_id = serializers.IntegerField()
     name = serializers.CharField()
     address = serializers.CharField()
@@ -95,6 +96,7 @@ class RoutePlanMetaSerializer(serializers.Serializer):
     local_compute_ms = serializers.IntegerField(required=False)
     total_ms = serializers.IntegerField(required=False)
     timing = TimingSerializer(required=False)
+    warnings = serializers.ListField(child=serializers.CharField(), required=False)
     assumptions = serializers.ListField(child=serializers.CharField())
 
 

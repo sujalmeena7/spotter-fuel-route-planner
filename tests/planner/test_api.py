@@ -295,3 +295,28 @@ def test_low_starting_fuel_unreachable_api_both_modes(mock_ors_route):
             assert data["error"]["code"] == "unreachable"
             assert data["error"]["details"]["gap_start_mile"] == 0.0
             assert data["error"]["details"]["gap_end_mile"] == 105.46
+
+
+@pytest.mark.django_db
+def test_origin_fill_labeling_and_warning_on_houston_san_antonio(mock_ors_route):
+    """Origin fill has sequence 0, kind 'origin_fill', descriptive name, and warnings when > 25 mi."""
+    client = Client()
+    resp = client.get(
+        "/api/v1/route-plan/?start=Houston, TX&finish=San Antonio, TX&start_fuel_gallons=0"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    stops = data["fuel_stops"]
+    assert len(stops) > 0
+    orig = stops[0]
+    assert orig["sequence"] == 0
+    assert orig["kind"] == "origin_fill"
+    assert "Origin fill (priced at" in orig["name"]
+    assert "mi away)" in orig["name"]
+    assert orig["mile_marker"] == 0.0
+    assert orig["fuel_on_arrival_gallons"] == 0.0
+
+    # Warning for Houston (> 25 mi to nearest station)
+    assert "warnings" in data["meta"]
+    assert len(data["meta"]["warnings"]) == 1
+    assert "No station within 25 mi of origin" in data["meta"]["warnings"][0]

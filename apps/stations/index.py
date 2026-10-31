@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import numpy as np
 
-from apps.routing.geometry import lat_lon_to_unit_vectors
+from apps.routing.geometry import EARTH_RADIUS_MILES, lat_lon_to_unit_vectors
 from apps.stations.models import Station
 
 
@@ -103,3 +103,14 @@ class StationIndex:
 
     def __len__(self) -> int:
         return len(self.ids)
+
+    def find_nearest(self, lat: float, lon: float) -> tuple[int, float]:
+        """Find index and straight-line great-circle distance in miles to nearest station."""
+        if len(self.ids) == 0:
+            raise ValueError("StationIndex is empty.")
+        orig_vec = lat_lon_to_unit_vectors(np.array([lat]), np.array([lon]))[0]
+        dots = np.clip(self.unit_vectors @ orig_vec, -1.0, 1.0)
+        angles = np.arccos(dots)
+        miles = EARTH_RADIUS_MILES * angles
+        best_idx = int(np.argmin(miles))
+        return best_idx, float(miles[best_idx])
