@@ -1,0 +1,410 @@
+{
+  "info": {
+    "_postman_id": "c1f7b8e2-9b54-4a2a-b7e1-889012345678",
+    "name": "Spotter Fleet Fuel Route API",
+    "description": "Comprehensive API collection for Spotter's fuel optimization engine covering happy paths, cached warm responses, POST variant, start_fuel parameter, location autocomplete, and RFC 7807 error responses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Happy Path — Dallas to Denver (Cold Request)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Dallas,TX"
+            },
+            {
+              "key": "finish",
+              "value": "Denver,CO"
+            }
+          ]
+        },
+        "description": "Calculates optimal fuel stops for Dallas to Denver. Cold request makes exactly 1 routing call (0 geocoding calls due to offline gazetteer)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('External API calls <= 1', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.meta.external_api_calls).to.be.at.most(1);",
+              "});",
+              "pm.test('Fuel stops planned', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.fuel_stops.length).to.be.above(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Cached Repeat — Dallas to Denver (Warm Hit)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Dallas,TX"
+            },
+            {
+              "key": "finish",
+              "value": "Denver,CO"
+            }
+          ]
+        },
+        "description": "Repeats identical request. Must return from cache in < 10 ms with cache_hit=true and external_api_calls=0."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Cache hit is true', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.meta.cache_hit).to.be.true;",
+              "});",
+              "pm.test('External API calls is exactly 0', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.meta.external_api_calls).to.eql(0);",
+              "});",
+              "pm.test('Response time under 50ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(50);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. POST Route Plan with Corridor Candidates",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start\": \"Dallas, TX\",\n  \"finish\": \"Denver, CO\",\n  \"start_fuel\": 0.0,\n  \"include_candidates\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""]
+        },
+        "description": "Equivalent POST endpoint supporting JSON payload and include_candidates flag."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Candidates array returned', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.candidates).to.be.an('array');",
+              "    pm.expect(json.candidates.length).to.be.above(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Variant — Starting with Partial Fuel (30 Gallons)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO&start_fuel=30",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Dallas,TX"
+            },
+            {
+              "key": "finish",
+              "value": "Denver,CO"
+            },
+            {
+              "key": "start_fuel",
+              "value": "30"
+            }
+          ]
+        },
+        "description": "Fleet scenario where truck departs with 30 gallons in tank (300 miles initial range)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Location Autocomplete",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/locations/autocomplete/?q=dal",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "locations", "autocomplete", ""],
+          "query": [
+            {
+              "key": "q",
+              "value": "dal"
+            }
+          ]
+        },
+        "description": "Fast offline autocomplete matching US cities with 0 external API calls."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Returns list of suggestions', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.suggestions).to.be.an('array');",
+              "    pm.expect(json.suggestions.length).to.be.above(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Error Case — 400 Invalid Input (Missing Finish)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Dallas,TX",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Dallas,TX"
+            }
+          ]
+        },
+        "description": "Validation error when finish parameter is missing."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('Error code is INVALID_INPUT', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.error.code).to.eql('INVALID_INPUT');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Error Case — 422 Location Not Found",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Nonexistentcityxyz9999&finish=Denver,CO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Nonexistentcityxyz9999"
+            },
+            {
+              "key": "finish",
+              "value": "Denver,CO"
+            }
+          ]
+        },
+        "description": "Unprocessable entity when location cannot be resolved."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 422', function () {",
+              "    pm.response.to.have.status(422);",
+              "});",
+              "pm.test('Error code is LOCATION_NOT_FOUND', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.error.code).to.eql('LOCATION_NOT_FOUND');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Error Case — 422 Location Outside USA",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/route-plan/?start=Toronto,ON&finish=Denver,CO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "route-plan", ""],
+          "query": [
+            {
+              "key": "start",
+              "value": "Toronto,ON"
+            },
+            {
+              "key": "finish",
+              "value": "Denver,CO"
+            }
+          ]
+        },
+        "description": "Rejection of non-US locations."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 422', function () {",
+              "    pm.response.to.have.status(422);",
+              "});",
+              "pm.test('Error code is LOCATION_OUTSIDE_USA', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.error.code).to.eql('LOCATION_OUTSIDE_USA');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/healthz",
+          "host": ["{{baseUrl}}"],
+          "path": ["healthz"]
+        },
+        "description": "System health probe returning ok, version, and database station count."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Status is ok', function () {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.status).to.eql('ok');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
