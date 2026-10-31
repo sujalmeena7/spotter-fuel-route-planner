@@ -132,11 +132,12 @@ body, html {
     border-color: var(--brand);
 }
 
-/* Price Legend (Bottom Right) */
+/* Price Legend (Bottom Left, right of desktop floating panel) */
 .price-legend-box {
     position: absolute;
     bottom: 24px;
-    right: 16px;
+    left: 442px;
+    right: auto;
     background: var(--surface);
     backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
@@ -282,6 +283,68 @@ body, html {
 .brand-text p {
     font-size: 12px;
     color: var(--text-muted);
+}
+
+/* Collapsible Route Summary Bar */
+.route-summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.route-summary-bar:hover {
+    border-color: var(--brand);
+}
+
+.route-summary-text-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 0;
+}
+
+.route-summary-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.route-summary-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.route-summary-edit-btn {
+    background: var(--brand-light, rgba(37, 99, 235, 0.12));
+    color: var(--brand);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.route-summary-edit-btn:hover {
+    background: var(--brand);
+    color: #FFFFFF;
+}
+
+.route-input-card.collapsed {
+    display: none !important;
 }
 
 /* Route Input Card (Google Maps Style) */
@@ -1156,7 +1219,10 @@ body, html {
     }
 
     .price-legend-box {
+        left: 16px;
+        right: auto;
         bottom: calc(52vh + 12px);
+        display: block !important;
     }
 }
 
@@ -1177,7 +1243,17 @@ body, html {
     }
 
     .price-legend-box {
-        display: none !important;
+        left: 12px;
+        right: auto;
+        bottom: calc(48vh + 12px);
+        display: block !important;
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+
+    .legend-bar {
+        width: 100px;
+        height: 6px;
     }
 
     .floating-panel {

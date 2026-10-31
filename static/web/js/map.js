@@ -154,7 +154,7 @@ export function setupMap({
                     geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
                     properties: {
                         station_id: c.station_id,
-                        price: c.price_per_gallon,
+                        price: parseFloat(c.price_per_gallon) || 3.50,
                         mile_marker: c.mile_marker,
                     },
                 })),
@@ -174,10 +174,17 @@ export function setupMap({
                 },
                 paint: {
                     'circle-radius': 4.5,
-                    'circle-color': '#93C5FD',
-                    'circle-opacity': 0.65,
+                    'circle-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'price'],
+                        2.80, '#16A34A',
+                        3.50, '#D97706',
+                        4.20, '#DC2626'
+                    ],
+                    'circle-opacity': 0.85,
                     'circle-stroke-width': 1,
-                    'circle-stroke-color': '#1D4ED8',
+                    'circle-stroke-color': '#FFFFFF',
                 },
             });
 
@@ -237,10 +244,10 @@ export function setupMap({
         const isDesktop = window.innerWidth >= 1024;
         map.fitBounds(bounds, {
             padding: {
-                top: 60,
-                bottom: isDesktop ? 60 : 260,
-                left: isDesktop ? 440 : 40,
-                right: 60,
+                top: 80,
+                bottom: isDesktop ? 80 : Math.round(window.innerHeight * 0.52),
+                left: isDesktop ? 460 : 36,
+                right: 70,
             },
             duration: 1200,
         });

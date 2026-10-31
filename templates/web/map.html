@@ -67,6 +67,15 @@
                 </div>
             </header>
 
+            <!-- Collapsible Route Summary Bar (shown when results load) -->
+            <div class="route-summary-bar" id="route-summary-bar" style="display: none;">
+                <div class="route-summary-text-wrap">
+                    <span class="route-summary-icon">📍</span>
+                    <span class="route-summary-text" id="route-summary-text">Dallas, TX → Denver, CO</span>
+                </div>
+                <button type="button" class="route-summary-edit-btn" id="btn-edit-route" aria-label="Edit route inputs">Edit</button>
+            </div>
+
             <!-- Route Input Card (Google Maps Style) -->
             <section class="route-input-card">
                 <form id="route-form" novalidate>

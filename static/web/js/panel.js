@@ -82,6 +82,33 @@ export function setupPanel({
         });
     });
 
+    // 4b. Collapsible route input summary handling
+    const summaryBar = document.getElementById('route-summary-bar');
+    const editBtn = document.getElementById('btn-edit-route');
+    const inputCard = document.querySelector('.route-input-card');
+    const exampleChips = document.querySelector('.example-chips-wrap');
+
+    function toggleInputCollapse() {
+        if (!inputCard) return;
+        const isCollapsed = inputCard.classList.toggle('collapsed');
+        if (exampleChips) {
+            exampleChips.style.display = isCollapsed ? 'none' : 'block';
+        }
+        if (editBtn) {
+            editBtn.textContent = isCollapsed ? 'Edit' : 'Done';
+        }
+    }
+
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleInputCollapse();
+        });
+    }
+    if (summaryBar) {
+        summaryBar.addEventListener('click', toggleInputCollapse);
+    }
+
     // 5. Loading skeletons & progress bar
     function setLoading(isLoading) {
         if (isLoading) {
@@ -130,6 +157,18 @@ export function setupPanel({
     function renderResults(planData) {
         clearError();
         const { summary, fuel_stops: stops, meta, map_url } = planData;
+
+        // Route Summary Bar (collapsed on mobile when results load)
+        const summaryText = document.getElementById('route-summary-text');
+        if (summaryBar && summaryText && inputCard) {
+            summaryText.textContent = `${summary.start.label} → ${summary.finish.label}`;
+            summaryBar.style.display = 'flex';
+            if (window.innerWidth <= 900) {
+                inputCard.classList.add('collapsed');
+                if (exampleChips) exampleChips.style.display = 'none';
+                if (editBtn) editBtn.textContent = 'Edit';
+            }
+        }
 
         // Performance badge
         if (meta) {
