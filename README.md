@@ -265,7 +265,7 @@ Benchmark results across 6 canonical nationwide corridors on Python 3.12:
 Returns US cities matching the prefix in $< 2$ ms with 0 external calls.
 
 ### 3. Error Responses
-All API errors use a single consistent JSON envelope matching `plan.md` Section 3 (no RFC 7807):
+All API errors use a single consistent JSON envelope:
 
 ```json
 {

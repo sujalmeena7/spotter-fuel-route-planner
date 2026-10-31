@@ -1,6 +1,6 @@
 # Architecture & Engineering Decisions (DECISIONS.md)
 
-This log documents all architectural choices, version selections, external URL verifications, and engineering refinements made relative to `plan.md`.
+This log documents the architectural choices, version selections, external URL verifications, and engineering refinements made while building the project.
 
 ---
 
