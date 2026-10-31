@@ -64,18 +64,18 @@ The service processes a route request through a 5-stage deterministic pipeline:
 
 ```mermaid
 flowchart TD
-    A["Dispatcher Request<br/>(GET / POST /map/)"] --> B["1. Location Resolver<br/>(US Census Gazetteer Index)"]
-    B -->|0 External Calls| C["2. Cached Routing Provider<br/>(OpenRouteService / OSRM)"]
-    C -->|1 Call Cold / 0 Calls Warm| D["3. Corridor Matching<br/>(cKDTree 3D Unit Sphere)"]
-    D -->|Sub-15ms Spatial Filter| E["4. Pure-Python Fuel Optimizer<br/>(Greedy Choice Engine)"]
-    E -->|O(n log n) Minimum Cost| F["5. Serializer & Response Cache<br/>(GeoJSON, KPIs, Sawtooth)"]
-    F --> G["Client Response & MapLibre UI"]
+    A["Client Request<br/>GET or POST /api/v1/route-plan/"] --> B["1. Location Resolver<br/>US Census Gazetteer index"]
+    B -->|"0 external calls"| C["2. Cached Routing Provider<br/>OpenRouteService or OSRM"]
+    C -->|"1 call cold, 0 calls warm"| D["3. Corridor Matching<br/>cKDTree on a 3D unit sphere"]
+    D -->|"stations within 10 mi of the route"| E["4. Fuel Optimizer<br/>pure Python, greedy"]
+    E -->|"stops, gallons, cost"| F["5. Serializer and Response Cache<br/>GeoJSON, KPIs, fuel profile"]
+    F --> G["JSON Response and MapLibre UI"]
 ```
 
 1. **Location Resolution**: Resolves coordinates, `City, ST`, or state names using an in-memory Census Gazetteer index (68,744 places). **0 external API calls**.
-2. **Routing Provider**: Fetches truck-specific highway polyline (`driving-hgv`) via OpenRouteService (with OSRM fallback). Responses are cached for 24 hours.
+2. **Routing Provider**: Fetches the route polyline with a single call: OpenRouteService with the truck profile (`driving-hgv`) when `ORS_API_KEY` is set, otherwise the public OSRM server (car profile). Responses are cached for 24 hours.
 3. **Corridor Station Matching**: Evaluates highway route coordinates against all 6,626 stations using NumPy 3D unit sphere projections and SciPy `cKDTree` search within a 10-mile corridor.
-4. **Fuel Optimization**: Pure-Python greedy solver determines exact refuel gallons and stop sequences to achieve global minimum cost while respecting the 50-gallon tank and 500-mile vehicle range.
+4. **Fuel Optimization**: A pure-Python greedy solver decides where to stop and how many gallons to buy, within the 50-gallon tank and 500-mile range. With `optimize_for=cost` it finds the true minimum cost (checked against a dynamic-programming solver in the tests). The default `practical` mode then merges tiny top-ups into fewer stops for a small extra cost (see [Optimization Modes](#-algorithm-greedy-choice-dp-proof--optimization-modes)).
 5. **Serialization & Caching**: Constructs RFC 7946 GeoJSON, KPI cards, and SVG sawtooth fuel telemetry. Response payloads are cached for 1 hour via SHA-256 fingerprinting.
 
 ---
