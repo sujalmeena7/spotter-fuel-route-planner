@@ -30,6 +30,20 @@ def block_external_sockets(monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
 
 
+@pytest.fixture(autouse=True)
+def deterministic_test_settings(settings):
+    """Make tests independent of the developer machine.
+
+    - Use a dummy ORS key so the provider choice never depends on a local .env.
+      Tests that exercise the OSRM fallback override this to "".
+    - Let WhiteNoise serve straight from the static source dirs, so tests don't
+      require a prior `collectstatic` run.
+    """
+    settings.ORS_API_KEY = "test-ors-key"
+    settings.WHITENOISE_USE_FINDERS = True
+    settings.WHITENOISE_AUTOREFRESH = True
+
+
 @pytest.fixture
 def ensure_db_stations_and_clean_cache():
     cache.clear()
