@@ -153,23 +153,27 @@ To prove optimality, `tests/planner/test_optimizer.py` implements a discretized 
 
 ## ⚡ Performance Benchmarks (`manage.py benchmark_routes`)
 
-Benchmark results across 6 canonical nationwide corridors on Python 3.12:
+Run it yourself with `python manage.py benchmark_routes --mock`. Results for 6 nationwide corridors on Python 3.12 (all times in milliseconds):
 
-| Route (Corridor) | Distance | Resolve | Route | Match | Optimize | Serialize | Local Compute | Cold Total | Warm (Cached) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Dallas, TX → Denver, CO** | 779 mi | 0.06 ms | 0.0 ms* | 5.13 ms | 0.19 ms | 0.02 ms | **5.39 ms** | 5.4 ms | **0.01 ms** |
-| **New York, NY → Los Angeles, CA** | 2,810 mi | 0.05 ms | 0.0 ms* | 20.93 ms | 0.72 ms | 0.04 ms | **21.74 ms** | 21.7 ms | **0.01 ms** |
-| **Chicago, IL → Atlanta, GA** | 683 mi | 0.05 ms | 0.0 ms* | 5.96 ms | 0.28 ms | 0.02 ms | **6.31 ms** | 6.3 ms | **0.01 ms** |
-| **Seattle, WA → Miami, FL** | 3,303 mi | 0.04 ms | 0.0 ms* | 45.05 ms | 0.87 ms | 0.03 ms | **45.99 ms** | 46.0 ms | **0.01 ms** |
-| **Houston, TX → Phoenix, AZ** | 1,185 mi | 0.04 ms | 0.0 ms* | 5.85 ms | 0.37 ms | 0.02 ms | **6.28 ms** | 6.3 ms | **0.01 ms** |
-| **Boston, MA → Washington, DC** | 440 mi | 0.05 ms | 0.0 ms* | 5.36 ms | 0.29 ms | 0.02 ms | **5.72 ms** | 5.7 ms | **0.01 ms** |
-| **AVERAGE (6 CORRIDORS)** | **1,533 mi** | **0.05 ms** | - | **14.71 ms** | **0.45 ms** | **0.03 ms** | **15.24 ms** | **15.2 ms** | **0.01 ms** |
+| Route | Miles | Resolve | Corridor match | Optimize | Serialize | **Local total** | **Cached repeat** |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Dallas, TX → Denver, CO | 779 | 0.07 | 6.33 | 0.27 | 0.01 | **6.68** | 0.01 |
+| New York, NY → Los Angeles, CA | 2,810 | 0.06 | 21.05 | 0.95 | 0.03 | **22.09** | 0.01 |
+| Chicago, IL → Atlanta, GA | 683 | 0.06 | 5.72 | 0.43 | 0.02 | **6.23** | 0.01 |
+| Seattle, WA → Miami, FL | 3,303 | 0.08 | 45.33 | 0.97 | 0.03 | **46.40** | 0.01 |
+| Houston, TX → Phoenix, AZ | 1,185 | 0.06 | 7.48 | 0.38 | 0.01 | **7.94** | 0.01 |
+| Boston, MA → Washington, DC | 440 | 0.06 | 5.91 | 0.43 | 0.01 | **6.41** | 0.01 |
+| **Average** | **1,533** | **0.06** | **15.30** | **0.57** | **0.02** | **15.96** | **0.01** |
 
-*\* Route stage in `--mock` mode loads recorded high-resolution geometries with 0 network calls. Live cold ORS routing adds 200–500 ms network transit time.*
+**How to read this**
+- **Local total** is everything the server does itself: resolving the two cities, finding stations near the route, choosing fuel stops, and building the response. It does not include the routing API call.
+- **Cached repeat** is the same request served from cache, with 0 external calls.
+- The benchmark runs in `--mock` mode with recorded route geometries, so it makes no network calls. A real cold request adds the routing API's response time, roughly 1–3 s in testing, and still makes exactly 1 call.
+- The one-time startup cost of loading the station index (about 1 s) is paid when the server starts, not on requests.
 
-### Quality Bar Verdicts:
-- ✅ **Average Local Compute**: **15.24 ms** (Target: $< 50.0$ ms)
-- ✅ **Average Warm Cached Latency**: **0.01 ms** (Target: $< 10.0$ ms)
+### Results against targets
+- ✅ **Average local compute:** 15.96 ms (target: under 50 ms)
+- ✅ **Average cached response:** 0.01 ms (target: under 10 ms)
 
 ---
 
