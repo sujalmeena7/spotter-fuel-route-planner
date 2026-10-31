@@ -2,7 +2,8 @@
    FuelRoute Production Design Tokens & Styles
    ========================================================================== */
 
-:root {
+:root,
+[data-theme="light"] {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
@@ -63,7 +64,7 @@
 }
 
 /* Base Reset & Typography */
-* {
+*, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -351,7 +352,7 @@ body, html {
 
 .waypoint-input-wrap input {
     width: 100%;
-    padding: 9px 12px;
+    padding: 9px 44px 9px 12px; /* 44px right padding prevents overlap with swap button */
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 13px;
@@ -359,6 +360,7 @@ body, html {
     background: var(--bg);
     outline: none;
     transition: all 150ms ease;
+    box-sizing: border-box;
 }
 
 .waypoint-input-wrap input:focus {
@@ -1027,8 +1029,97 @@ body, html {
 .popup-price.tier-mid { color: var(--warn); }
 .popup-price.tier-high { color: var(--danger); }
 
+
+/* Empty sections hiding - prevents empty bordered boxes */
+.results-container:empty,
+.kpi-section:empty,
+.chart-section:empty,
+.timeline-section:empty {
+    display: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 0 !important;
+}
+
 /* ==========================================================================
-   Responsive Breakpoints (Mobile Bottom Sheet)
+   MapLibre Controls Theming (Glass/Surface Dark & Light)
+   ========================================================================== */
+.maplibregl-ctrl-top-right {
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 15;
+}
+
+.maplibregl-ctrl-group {
+    background: var(--surface) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-sm) !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+}
+
+.maplibregl-ctrl-group button {
+    background-color: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    width: 32px !important;
+    height: 32px !important;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.maplibregl-ctrl-group button:last-child {
+    border-bottom: none !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+    background-color: var(--surface-hover) !important;
+}
+
+.maplibregl-ctrl-group button:focus {
+    outline: none !important;
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    opacity: 0.85;
+}
+
+[data-theme="dark"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1) brightness(1.2);
+}
+
+.maplibregl-ctrl-attrib {
+    background: var(--surface) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.maplibregl-ctrl-attrib a {
+    color: var(--text-muted) !important;
+    text-decoration: none !important;
+}
+
+.maplibregl-ctrl-attrib a:hover {
+    color: var(--brand) !important;
+    text-decoration: underline !important;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints (Mobile Bottom Sheet & 360px-390px Viewports)
    ========================================================================== */
 
 @media (max-width: 1023px) {
@@ -1038,15 +1129,25 @@ body, html {
         left: 0;
         right: 0;
         width: 100%;
+        max-width: 100vw;
         height: 52vh; /* initial snap point */
         border-radius: 20px 20px 0 0;
         border-bottom: none;
         border-left: none;
         border-right: none;
+        box-sizing: border-box;
     }
 
     .drag-handle {
         display: flex;
+    }
+
+    .panel-scroll-body {
+        padding: 14px 16px;
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
     .map-top-controls {
@@ -1056,6 +1157,99 @@ body, html {
 
     .price-legend-box {
         bottom: calc(52vh + 12px);
+    }
+}
+
+@media (max-width: 640px) {
+    .map-top-controls {
+        top: 10px;
+        right: 48px;
+        gap: 6px;
+    }
+
+    .map-control-btn {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .map-control-btn .btn-text {
+        display: none;
+    }
+
+    .price-legend-box {
+        display: none !important;
+    }
+
+    .floating-panel {
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+    }
+
+    .panel-scroll-body {
+        padding: 12px 14px;
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .kpi-card {
+        padding: 10px;
+        min-width: 0;
+    }
+
+    .hero-cost {
+        font-size: 22px;
+    }
+
+    .chips-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .example-chip {
+        white-space: nowrap;
+    }
+
+    .slider-container input[type="range"] {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 390px) {
+    .panel-scroll-body {
+        padding: 10px 12px;
+    }
+
+    .route-input-card {
+        padding: 12px 10px;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-card.hero,
+    .kpi-card.savings {
+        grid-column: span 1;
+    }
+
+    .chips-list {
+        gap: 4px;
+    }
+
+    .example-chip {
+        font-size: 10px;
+        padding: 3px 8px;
     }
 }
 

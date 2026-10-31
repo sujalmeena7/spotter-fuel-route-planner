@@ -17,9 +17,13 @@ export function setupMap({
     onStopClick,
 }) {
     // 1. Theme determination
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTheme = urlParams.get('theme');
     const savedTheme = localStorage.getItem('fuelroute_theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let currentTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    let currentTheme = (urlTheme === 'light' || urlTheme === 'dark')
+        ? urlTheme
+        : (savedTheme || (systemPrefersDark ? 'dark' : 'light'));
 
     document.documentElement.setAttribute('data-theme', currentTheme);
 
@@ -36,7 +40,6 @@ export function setupMap({
     map.addControl(new maplibregl.FullscreenControl(), 'top-right');
     map.addControl(
         new maplibregl.AttributionControl({
-            customAttribution: '© OpenFreeMap, CARTO, OpenStreetMap contributors',
             compact: true,
         }),
         'bottom-right'
@@ -47,12 +50,19 @@ export function setupMap({
     let showCandidates = false;
     let drawInAnimFrame = null;
 
-    // 2. Theme Switching
+    // 2. Theme Switching & UI State
+    function updateThemeBtn(theme) {
+        if (!themeToggleBtn) return;
+        const icon = theme === 'dark' ? '☀️' : '🌙';
+        const label = theme === 'dark' ? ' Light' : ' Dark';
+        themeToggleBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-text">${label}</span>`;
+    }
+
     function setTheme(theme) {
         currentTheme = theme;
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('fuelroute_theme', theme);
-        themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+        updateThemeBtn(theme);
         map.setStyle(STYLES[theme]);
         map.once('style.load', () => {
             if (currentPlanData) {
@@ -61,16 +71,23 @@ export function setupMap({
         });
     }
 
-    themeToggleBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    updateThemeBtn(currentTheme);
     themeToggleBtn.addEventListener('click', () => {
         setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
 
     // 3. Corridor Candidates Toggle
+    function updateCorridorBtn() {
+        if (!corridorToggleBtn) return;
+        const text = showCandidates ? ' Hide Corridor Stations' : ' Show Corridor Stations';
+        corridorToggleBtn.innerHTML = `<span class="btn-icon">📍</span><span class="btn-text">${text}</span>`;
+    }
+
+    updateCorridorBtn();
     corridorToggleBtn.addEventListener('click', () => {
         showCandidates = !showCandidates;
         corridorToggleBtn.classList.toggle('active', showCandidates);
-        corridorToggleBtn.textContent = showCandidates ? '📍 Hide Corridor Stations' : '📍 Show Corridor Stations';
+        updateCorridorBtn();
         if (map.getLayer('corridor-candidates-layer')) {
             map.setLayoutProperty(
                 'corridor-candidates-layer',
