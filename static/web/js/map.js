@@ -34,6 +34,7 @@ export function setupMap({
         zoom: 3.8,
         attributionControl: false,
     });
+    window.mapInstance = map;
 
     // Add navigation and fullscreen controls
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');

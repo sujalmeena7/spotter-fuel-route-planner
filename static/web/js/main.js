@@ -112,12 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
         originInput.value = initialStart;
         destInput.value = initialFinish;
         // Wait for map style to be ready before firing initial plan
-        mapController.map.once('load', () => {
+        if (mapController.map.loaded()) {
             executePlan({
                 start: initialStart,
                 finish: initialFinish,
                 start_fuel_gallons: parseFloat(fuelSlider.value),
             });
-        });
+        } else {
+            mapController.map.once('load', () => {
+                executePlan({
+                    start: initialStart,
+                    finish: initialFinish,
+                    start_fuel_gallons: parseFloat(fuelSlider.value),
+                });
+            });
+        }
     }
 });
