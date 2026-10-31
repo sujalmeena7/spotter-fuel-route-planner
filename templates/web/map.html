@@ -2,9 +2,156 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FuelRoute</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FuelRoute — Cost-Optimized Fueling for Long-Haul Trucks</title>
+    <meta name="description" content="Production fuel-optimized route planner for trucking fleets with sub-50ms local compute and zero redundant routing calls.">
+
+    <!-- Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Pinned MapLibre GL JS v4.7.1 with Verified Subresource Integrity (SRI) -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+          integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V"
+          crossorigin="anonymous">
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+            integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj"
+            crossorigin="anonymous"></script>
+
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="/static/web/css/app.css">
 </head>
 <body>
-    <h1>FuelRoute</h1>
+    <!-- Full-bleed Map Canvas -->
+    <div id="map-container" role="region" aria-label="Interactive Route Map"></div>
+
+    <!-- Map Top Right Overlay Controls -->
+    <div class="map-top-controls" role="toolbar" aria-label="Map Controls">
+        <button type="button" class="map-control-btn" id="btn-corridor-toggle" title="Toggle candidate fuel stations within 10-mile corridor">
+            📍 Show Corridor Stations
+        </button>
+        <button type="button" class="map-control-btn" id="btn-theme-toggle" title="Toggle Light/Dark Map Theme">
+            🌙 Dark
+        </button>
+    </div>
+
+    <!-- Map Price Legend (Bottom Right) -->
+    <div class="price-legend-box" role="complementary" aria-label="Fuel Price Legend">
+        <div class="legend-title">Fuel Price Scale</div>
+        <div class="legend-bar"></div>
+        <div class="legend-labels">
+            <span>$2.80</span>
+            <span>$3.50</span>
+            <span>$4.20+</span>
+        </div>
+    </div>
+
+    <!-- Floating Glass Panel (Desktop) / Bottom Sheet (Mobile) -->
+    <aside class="floating-panel" id="floating-panel" role="region" aria-label="Route Planner Panel">
+        <!-- Indeterminate Progress Indicator -->
+        <div class="panel-progress" id="panel-progress"></div>
+
+        <!-- Draggable Bottom Sheet Handle (Mobile) -->
+        <div class="drag-handle" id="drag-handle" role="button" aria-label="Drag sheet to resize" tabindex="0">
+            <div class="drag-handle-bar"></div>
+        </div>
+
+        <div class="panel-scroll-body">
+            <!-- Brand Header -->
+            <header class="brand-header">
+                <div class="brand-logo-icon">🚛</div>
+                <div class="brand-text">
+                    <h1>FuelRoute</h1>
+                    <p>Cost-optimized fueling for long-haul trucks</p>
+                </div>
+            </header>
+
+            <!-- Route Input Card (Google Maps Style) -->
+            <section class="route-input-card">
+                <form id="route-form" novalidate>
+                    <div class="waypoint-fields">
+                        <div class="dotted-connector"></div>
+
+                        <!-- Origin Input -->
+                        <div class="waypoint-field">
+                            <span class="waypoint-icon"><div class="dot-green"></div></span>
+                            <div class="waypoint-input-wrap">
+                                <label for="input-origin" class="visually-hidden" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Origin Location</label>
+                                <input type="text" id="input-origin" name="start" placeholder="Starting point (e.g. Dallas, TX)"
+                                       autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" required>
+                                <div class="autocomplete-dropdown" id="dropdown-origin" role="listbox"></div>
+                            </div>
+                        </div>
+
+                        <!-- Swap Button -->
+                        <button type="button" class="btn-swap" id="btn-swap" title="Swap origin and destination" aria-label="Swap origin and destination">
+                            ⇅
+                        </button>
+
+                        <!-- Destination Input -->
+                        <div class="waypoint-field">
+                            <span class="waypoint-icon"><div class="dot-red"></div></span>
+                            <div class="waypoint-input-wrap">
+                                <label for="input-dest" class="visually-hidden" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Destination Location</label>
+                                <input type="text" id="input-dest" name="finish" placeholder="Destination (e.g. Denver, CO)"
+                                       autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" required>
+                                <div class="autocomplete-dropdown" id="dropdown-dest" role="listbox"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Starting Fuel Slider -->
+                    <div class="fuel-control-row">
+                        <div class="fuel-control-header">
+                            <label for="input-fuel" class="fuel-label-title">Starting Fuel (Gallons)</label>
+                            <span class="fuel-gauge-val" id="fuel-gauge-label">Empty (0 gal)</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" id="input-fuel" name="fuel" min="0" max="50" step="5" value="0" aria-valuemin="0" aria-valuemax="50" aria-valuenow="0">
+                        </div>
+                    </div>
+
+                    <!-- Submit Plan Button -->
+                    <button type="submit" class="btn-plan">
+                        <span class="btn-text">Plan Optimal Route</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Example Chips -->
+            <div class="example-chips-wrap">
+                <div class="example-chips-title">Popular Fleets Corridors</div>
+                <div class="chips-list">
+                    <button type="button" class="example-chip" data-start="New York, NY" data-finish="Los Angeles, CA">New York → LA</button>
+                    <button type="button" class="example-chip" data-start="Dallas, TX" data-finish="Denver, CO">Dallas → Denver</button>
+                    <button type="button" class="example-chip" data-start="Chicago, IL" data-finish="Atlanta, GA">Chicago → Atlanta</button>
+                    <button type="button" class="example-chip" data-start="Seattle, WA" data-finish="Miami, FL">Seattle → Miami</button>
+                </div>
+            </div>
+
+            <!-- Performance Badge -->
+            <div class="perf-badge" id="perf-badge" style="display: none;"></div>
+
+            <!-- Inline Error Banner -->
+            <div class="error-banner" id="error-banner" role="alert"></div>
+
+            <!-- Results Section (aria-live="polite") -->
+            <div class="results-container" id="results-container" aria-live="polite">
+                <!-- KPI Grid Section -->
+                <section class="kpi-section" id="section-kpis"></section>
+
+                <!-- Fuel Level Sawtooth Chart Section -->
+                <section class="chart-section" id="section-chart"></section>
+
+                <!-- Itinerary Timeline Stepper -->
+                <section class="timeline-section" id="section-timeline"></section>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ES Modules Entrypoint -->
+    <script type="module" src="/static/web/js/main.js"></script>
 </body>
 </html>

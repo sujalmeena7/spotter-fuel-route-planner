@@ -1,4 +1,1069 @@
-/* Spotter FuelRoute Design Tokens & Styles */
+/* ==========================================================================
+   FuelRoute Production Design Tokens & Styles
+   ========================================================================== */
+
 :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Light Theme (Default) */
     --bg: #F8FAFC;
+    --surface: rgba(255, 255, 255, 0.94);
+    --surface-solid: #FFFFFF;
+    --surface-hover: #F1F5F9;
+    --text: #0F172A;
+    --text-muted: #64748B;
+    --border: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    
+    --brand: #2563EB;
+    --brand-hover: #1D4ED8;
+    --brand-light: #EFF6FF;
+    --success: #16A34A;
+    --success-bg: #DCFCE7;
+    --warn: #D97706;
+    --warn-bg: #FEF3C7;
+    --danger: #DC2626;
+    --danger-bg: #FEE2E2;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --glass-blur: blur(14px);
+    
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-pill: 9999px;
+}
+
+[data-theme="dark"] {
+    --bg: #0B1220;
+    --surface: rgba(17, 24, 39, 0.92);
+    --surface-solid: #111827;
+    --surface-hover: #1F2937;
+    --text: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --border: #1F2937;
+    --border-subtle: #161F2E;
+    
+    --brand: #3B82F6;
+    --brand-hover: #60A5FA;
+    --brand-light: rgba(59, 130, 246, 0.15);
+    --success: #22C55E;
+    --success-bg: rgba(34, 197, 94, 0.15);
+    --warn: #F59E0B;
+    --warn-bg: rgba(245, 158, 11, 0.15);
+    --danger: #EF4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.65);
+}
+
+/* Base Reset & Typography */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body, html {
+    height: 100%;
+    width: 100%;
+    font-family: var(--font-sans);
+    color: var(--text);
+    background-color: var(--bg);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Number tabular alignment */
+.tabular-nums, .kpi-value, .chart-axis-label, .metric-item, .price-chip {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Map Canvas Container */
+#map-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Top Right Map Overlay Controls */
+.map-top-controls {
+    position: absolute;
+    top: 16px;
+    right: 56px; /* Offset to clear MapLibre nav controls */
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.map-control-btn {
+    background: var(--surface);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 180ms ease-out;
+}
+
+.map-control-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--brand);
+}
+
+.map-control-btn.active {
+    background: var(--brand);
+    color: #FFFFFF;
+    border-color: var(--brand);
+}
+
+/* Price Legend (Bottom Right) */
+.price-legend-box {
+    position: absolute;
+    bottom: 24px;
+    right: 16px;
+    background: var(--surface);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    font-size: 11px;
+    z-index: 10;
+    box-shadow: var(--shadow-sm);
+}
+
+.price-legend-box .legend-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+}
+
+.legend-bar {
+    width: 130px;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #16A34A, #D97706, #DC2626);
+    margin-bottom: 4px;
+}
+
+.legend-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Floating Glass Panel (Desktop) */
+.floating-panel {
+    position: absolute;
+    top: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: 410px;
+    background: var(--surface);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Panel Progress Bar */
+.panel-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: transparent;
+    overflow: hidden;
+    z-index: 25;
+}
+
+.panel-progress.active {
+    background: var(--brand-light);
+}
+
+.panel-progress.active::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--brand);
+    animation: indeterminate 1.2s infinite ease-in-out;
+}
+
+@keyframes indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+}
+
+/* Mobile Drag Handle (hidden on desktop) */
+.drag-handle {
+    display: none;
+    height: 20px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    touch-action: none;
+}
+
+.drag-handle-bar {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: var(--radius-pill);
+}
+
+/* Scrollable Panel Body */
+.panel-scroll-body {
+    padding: 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+}
+
+.panel-scroll-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.panel-scroll-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+/* Header */
+.brand-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.brand-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #2563EB, #1D4ED8);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.brand-text h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.brand-text p {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Route Input Card (Google Maps Style) */
+.route-input-card {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 14px;
+}
+
+.waypoint-fields {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.waypoint-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.waypoint-icon {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dot-green {
+    width: 10px;
+    height: 10px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+}
+
+.dot-red {
+    width: 10px;
+    height: 10px;
+    background: var(--danger);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+/* Dotted vertical connector */
+.dotted-connector {
+    position: absolute;
+    left: 6px;
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    border-left: 2px dotted var(--text-muted);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.waypoint-input-wrap {
+    flex: 1;
+    position: relative;
+}
+
+.waypoint-input-wrap input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: all 150ms ease;
+}
+
+.waypoint-input-wrap input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Swap Button */
+.btn-swap {
+    position: absolute;
+    right: 8px;
+    top: calc(50% - 14px);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    z-index: 5;
+    transition: all 250ms ease-out;
+}
+
+.btn-swap:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+    background: var(--surface-hover);
+}
+
+/* Autocomplete Dropdown */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 50;
+    display: none;
+    margin-top: 4px;
+}
+
+.autocomplete-dropdown.active {
+    display: block;
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.autocomplete-item:hover, .autocomplete-item.selected {
+    background: var(--brand-light);
+    color: var(--brand);
+}
+
+.auto-pin {
+    font-size: 13px;
+}
+
+/* Starting Fuel Slider & Gauge */
+.fuel-control-row {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.fuel-control-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.fuel-label-title {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.fuel-gauge-val {
+    font-weight: 600;
+    color: var(--brand);
+}
+
+.slider-container input[type="range"] {
+    width: 100%;
+    accent-color: var(--brand);
+    cursor: pointer;
+}
+
+/* Plan Button */
+.btn-plan {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: var(--brand);
+    color: #FFFFFF;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    transition: all 180ms ease;
+}
+
+.btn-plan:hover {
+    background: var(--brand-hover);
+}
+
+.btn-plan.loading {
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* Example Chips */
+.example-chips-wrap {
+    margin-bottom: 16px;
+}
+
+.example-chips-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.chips-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.example-chip {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+
+.example-chip:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-light);
+}
+
+/* Performance Badge */
+.perf-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+/* Inline Error Banner */
+.error-banner {
+    display: none;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 14px;
+}
+
+/* KPI Grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.kpi-card {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-card.hero {
+    grid-column: span 2;
+    background: linear-gradient(135deg, var(--brand-light), transparent);
+    border-color: rgba(37, 99, 235, 0.25);
+}
+
+.kpi-card.savings {
+    grid-column: span 2;
+    background: var(--success-bg);
+    border-color: rgba(22, 163, 74, 0.3);
+}
+
+.kpi-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+}
+
+.kpi-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 4px 0 2px 0;
+}
+
+.hero-cost {
+    font-size: 26px;
+    color: var(--brand);
+}
+
+.savings-val {
+    color: var(--success);
+}
+
+.kpi-meta, .kpi-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Sawtooth Fuel Chart */
+.chart-section {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 18px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+
+.chart-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chart-subtitle {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.chart-svg-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.fuel-chart-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.chart-axis-label {
+    font-size: 9px;
+    fill: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.chart-stop-dot {
+    cursor: pointer;
+    transition: r 150ms ease;
+}
+
+.chart-stop-dot:hover {
+    r: 6px;
+}
+
+.chart-tooltip {
+    position: absolute;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+    box-shadow: var(--shadow-sm);
+    transform: translate(-50%, -130%);
+    white-space: nowrap;
+    z-index: 10;
+}
+
+/* Itinerary Timeline */
+.itinerary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.itinerary-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.badge-stops {
+    font-size: 11px;
+    background: var(--brand-light);
+    color: var(--brand);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+}
+
+.timeline-stepper {
+    display: flex;
+    flex-direction: column;
+}
+
+.timeline-step {
+    display: flex;
+    gap: 12px;
+    position: relative;
+}
+
+.step-marker-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24px;
+    flex-shrink: 0;
+}
+
+.step-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 8px;
+}
+
+.start-dot {
+    background: var(--success);
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 0 0 1px var(--success);
+}
+
+.finish-dot {
+    background: var(--danger);
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 0 0 1px var(--danger);
+}
+
+.stop-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    z-index: 2;
+}
+
+.stop-badge.tier-low { background: var(--success); }
+.stop-badge.tier-mid { background: var(--warn); }
+.stop-badge.tier-high { background: var(--danger); }
+
+.step-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+.timeline-gap {
+    padding: 4px 0 4px 36px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.step-card {
+    flex: 1;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-sm);
+    transition: all 180ms ease;
+    cursor: pointer;
+}
+
+.step-card:hover, .timeline-step.highlighted .step-card {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    background: var(--surface-hover);
+}
+
+.step-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.step-name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.step-mile {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.step-address {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.price-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+
+.price-chip.tier-low { background: var(--success-bg); color: var(--success); }
+.price-chip.tier-mid { background: var(--warn-bg); color: var(--warn); }
+.price-chip.tier-high { background: var(--danger-bg); color: var(--danger); }
+
+.stop-metrics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.metric-item strong {
+    color: var(--text);
+}
+
+.metric-item.cost strong {
+    color: var(--brand);
+}
+
+/* Mini Fuel Bar */
+.mini-fuel-bar-wrap {
+    margin-top: 6px;
+}
+
+.fuel-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+    font-family: var(--font-mono);
+}
+
+.fuel-track {
+    position: relative;
+    width: 100%;
+    height: 5px;
+    background: var(--border-subtle);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.fuel-fill {
+    position: absolute;
+    height: 100%;
+    background: var(--brand);
+    border-radius: 3px;
+}
+
+/* Action Footer */
+.action-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.btn-secondary {
+    flex: 1;
+    min-width: 110px;
+    padding: 8px 10px;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 150ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-secondary:hover {
+    background: var(--surface-hover);
+    border-color: var(--brand);
+    color: var(--brand);
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    background: var(--surface-solid);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-pill);
+    padding: 8px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 250ms ease-out;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Skeletons */
+.skeleton {
+    background: linear-gradient(90deg, var(--border-subtle) 25%, var(--border) 50%, var(--border-subtle) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.4s infinite ease-in-out;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Map Markers Styling */
+.custom-marker {
+    cursor: pointer;
+    transition: transform 200ms ease;
+}
+
+.fuel-stop-marker {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #FFFFFF;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.fuel-stop-marker.tier-low { background: #16A34A; }
+.fuel-stop-marker.tier-mid { background: #D97706; }
+.fuel-stop-marker.tier-high { background: #DC2626; }
+
+.fuel-stop-marker:hover, .fuel-stop-marker.active-highlight {
+    transform: scale(1.22);
+    z-index: 20;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.start-marker .marker-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #16A34A;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.finish-marker .marker-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #DC2626;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Marker Popup Cards */
+.maplibregl-popup-content {
+    background: var(--surface-solid) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md) !important;
+    padding: 10px 14px !important;
+    box-shadow: var(--shadow-md) !important;
+    font-family: var(--font-sans);
+}
+
+.marker-popup-card .popup-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.marker-popup-card .popup-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.marker-popup-card .popup-stats {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.popup-price.tier-low { color: var(--success); }
+.popup-price.tier-mid { color: var(--warn); }
+.popup-price.tier-high { color: var(--danger); }
+
+/* ==========================================================================
+   Responsive Breakpoints (Mobile Bottom Sheet)
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+    .floating-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 52vh; /* initial snap point */
+        border-radius: 20px 20px 0 0;
+        border-bottom: none;
+        border-left: none;
+        border-right: none;
+    }
+
+    .drag-handle {
+        display: flex;
+    }
+
+    .map-top-controls {
+        top: 12px;
+        right: 48px;
+    }
+
+    .price-legend-box {
+        bottom: calc(52vh + 12px);
+    }
+}
+
+/* Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

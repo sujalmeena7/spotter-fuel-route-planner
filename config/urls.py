@@ -16,4 +16,5 @@ urlpatterns = [
     # Location and Routing APIs
     path("", include("apps.routing.urls")),
     path("", include("apps.planner.urls")),
+    path("", include("apps.web.urls")),
 ]
