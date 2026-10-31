@@ -10,6 +10,7 @@ from django.core.cache import cache
 
 from apps.planner.corridor import CorridorStation, find_corridor_stations
 from apps.planner.optimizer import Stop, optimize_fuel
+from apps.routing.exceptions import NoRoute
 from apps.routing.geometry import thin_geometry
 from apps.routing.locations import LocationResolver
 from apps.routing.providers import (
@@ -17,6 +18,7 @@ from apps.routing.providers import (
     get_routing_provider,
     reset_call_counter,
 )
+from apps.stations.gazetteer import is_alaska, is_hawaii
 from apps.stations.index import StationIndex
 
 
@@ -119,10 +121,21 @@ class RoutePlanService:
         origin = LocationResolver.resolve(start_str)
         dest = LocationResolver.resolve(finish_str)
 
+        # Detect non-drivable island/disconnected states before calling routing API (0 calls)
+        if is_hawaii(origin.lat, origin.lon) or is_hawaii(dest.lat, dest.lon):
+            raise NoRoute("No drivable route between these locations.")
+        if is_alaska(origin.lat, origin.lon) != is_alaska(dest.lat, dest.lon):
+            raise NoRoute("No drivable route between these locations.")
+
         # 2. Routing call
         t_route_start = time.perf_counter()
         provider = get_routing_provider()
-        route = provider.get_route((origin.lat, origin.lon), (dest.lat, dest.lon))
+        route = provider.get_route(
+            (origin.lat, origin.lon),
+            (dest.lat, dest.lon),
+            origin_label=origin.label,
+            dest_label=dest.label,
+        )
         t_routing = (time.perf_counter() - t_route_start) * 1000
 
         # 3. Corridor stations

@@ -10,6 +10,7 @@ from django.test import Client
 from apps.planner.optimizer import NoFuelNearOrigin, Unreachable
 from apps.routing.exceptions import (
     NoRoute,
+    RoadNotFound,
     UpstreamError,
     UpstreamTimeout,
 )
@@ -54,7 +55,7 @@ def mock_ors_route(monkeypatch):
         provider="openrouteservice",
     )
 
-    def mock_get_route(self, origin, destination):
+    def mock_get_route(self, origin, destination, *args, **kwargs):
         lat1, _ = origin
         if abs(lat1 - 29.78) < 1.0:
             return houston_route
@@ -320,3 +321,52 @@ def test_origin_fill_labeling_and_warning_on_houston_san_antonio(mock_ors_route)
     assert "warnings" in data["meta"]
     assert len(data["meta"]["warnings"]) == 1
     assert "No station within 25 mi of origin" in data["meta"]["warnings"][0]
+
+
+@pytest.mark.django_db
+def test_error_hawaii_disconnected_returns_422_no_route():
+    """Verify routes to/from Hawaii are rejected with 422 no_route without calling ORS."""
+    client = Client()
+    resp = client.get("/api/v1/route-plan/?start=Honolulu, HI&finish=San Francisco, CA")
+    assert resp.status_code == 422
+    err = resp.json()["error"]
+    assert err["code"] == "no_route"
+    assert "No drivable route between these locations." in err["message"]
+
+
+@pytest.mark.django_db
+def test_error_alaska_to_lower48_returns_422_no_route():
+    """Verify routes between Alaska and lower-48 return 422 no_route."""
+    client = Client()
+    resp = client.get("/api/v1/route-plan/?start=Anchorage, AK&finish=Seattle, WA")
+    assert resp.status_code == 422
+    err = resp.json()["error"]
+    assert err["code"] == "no_route"
+    assert "No drivable route between these locations." in err["message"]
+
+
+@pytest.mark.django_db
+def test_error_road_not_found_422(monkeypatch):
+    """Verify ORS 2010 maps to 422 road_not_found with sanitized message."""
+
+    def mock_raise_road_not_found(*args, **kwargs):
+        raise RoadNotFound("Could not find a road near Dallas, TX.")
+
+    monkeypatch.setattr(OpenRouteServiceProvider, "get_route", mock_raise_road_not_found)
+
+    client = Client()
+    resp = client.get("/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO")
+    assert resp.status_code == 422
+    err = resp.json()["error"]
+    assert err["code"] == "road_not_found"
+    assert "Could not find a road near Dallas, TX." in err["message"]
+
+
+@pytest.mark.django_db
+def test_error_invalid_state_code_returns_422_location_not_found():
+    """Verify City, ZZ returns 422 location_not_found."""
+    client = Client()
+    resp = client.get("/api/v1/route-plan/?start=Springfield, ZZ&finish=Denver, CO")
+    assert resp.status_code == 422
+    err = resp.json()["error"]
+    assert err["code"] == "location_not_found"

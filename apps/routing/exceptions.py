@@ -23,6 +23,11 @@ class LocationOutsideUSA(RoutingError):
     code = "location_outside_usa"
 
 
+class RoadNotFound(RoutingError):
+    status_code = 422
+    code = "road_not_found"
+
+
 class NoRoute(RoutingError):
     status_code = 422
     code = "no_route"

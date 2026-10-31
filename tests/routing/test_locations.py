@@ -181,3 +181,38 @@ def test_autocomplete_endpoint():
     empty_resp = client.get("/api/v1/locations/autocomplete/?q=")
     assert empty_resp.status_code == 200
     assert empty_resp.json() == []
+
+
+def test_resolve_invalid_state_code_rejected_offline():
+    """Verify City, XX with invalid 2-letter state code returns 422 LocationNotFound with 0 calls."""
+    with pytest.raises(LocationNotFound):
+        LocationResolver.resolve("Springfield, ZZ")
+
+
+def test_resolve_ors_coarse_layers_rejected(settings, monkeypatch):
+    """Verify ORS geocode results matching coarse layers (region/country) are rejected with 422 LocationNotFound."""
+    settings.ORS_API_KEY = "mock-key-for-test"
+
+    class MockCoarseResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "features": [
+                    {
+                        "geometry": {"coordinates": [-99.9018, 31.9686]},
+                        "properties": {
+                            "label": "Texas, USA",
+                            "layer": "region",
+                            "region_a": "TX",
+                            "region": "Texas",
+                        },
+                    }
+                ]
+            }
+
+    monkeypatch.setattr("requests.get", lambda url, params=None, timeout=None: MockCoarseResponse())
+
+    # "Nowhereville, TX" should reject the state-level region centroid
+    with pytest.raises(LocationNotFound):
+        LocationResolver.resolve("Nowhereville, TX")

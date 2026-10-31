@@ -5,7 +5,7 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 
-from apps.routing.exceptions import NoRoute, UpstreamError, UpstreamTimeout
+from apps.routing.exceptions import NoRoute, RoadNotFound, UpstreamError, UpstreamTimeout
 from apps.routing.providers import (
     CachedRoutingProvider,
     OpenRouteServiceProvider,
@@ -141,3 +141,68 @@ def test_cached_provider_call_counting():
     route2 = cached.get_route((32.7933, -96.7665), (39.7392, -104.9848))
     assert get_call_count() == 0
     assert route2.distance_miles == route1.distance_miles
+
+
+def test_openrouteservice_payload_includes_radiuses():
+    """Verify ORS payload includes radiuses: [5000, 5000] to snap centroids to roads."""
+    last_payload = None
+
+    class CaptureSession:
+        def post(self, url, headers=None, json=None, timeout=None):
+            nonlocal last_payload
+            last_payload = json
+            fixture_path = FIXTURES_DIR / "ors_dallas_denver.json"
+            with open(fixture_path, encoding="utf-8") as f:
+                import json as _json
+
+                data = _json.load(f)
+            return MockSession(status_code=200, json_data=data)
+
+    provider = OpenRouteServiceProvider(api_key="mock-key", session=CaptureSession())
+    provider.get_route((32.7933, -96.7665), (39.7392, -104.9848))
+
+    assert last_payload is not None
+    assert "radiuses" in last_payload
+    assert last_payload["radiuses"] == [5000, 5000]
+
+
+def test_openrouteservice_error_2010_maps_to_road_not_found():
+    """Verify ORS error code 2010 maps to RoadNotFound with sanitized label."""
+    err_body = {
+        "error": {
+            "code": 2010,
+            "message": "Could not find point 0: [-96.79 32.77] within a radius of 5000.0 meters.",
+        }
+    }
+    provider = OpenRouteServiceProvider(
+        api_key="mock-key",
+        session=MockSession(status_code=400, json_data=err_body, text=json.dumps(err_body)),
+    )
+    with pytest.raises(RoadNotFound) as exc_info:
+        provider.get_route(
+            (32.77, -96.79), (39.73, -104.98), origin_label="Dallas, TX", dest_label="Denver, CO"
+        )
+
+    assert "Could not find a road near Dallas, TX." in str(exc_info.value)
+    # Ensure raw upstream JSON is NOT leaked
+    assert "2010" not in str(exc_info.value)
+    assert "within a radius" not in str(exc_info.value)
+
+
+def test_openrouteservice_error_2004_maps_to_no_route():
+    """Verify ORS error code 2004 maps to NoRoute without raw body leakage."""
+    err_body = {
+        "error": {
+            "code": 2004,
+            "message": "Cannot find a route between coordinates.",
+        }
+    }
+    provider = OpenRouteServiceProvider(
+        api_key="mock-key",
+        session=MockSession(status_code=404, json_data=err_body, text=json.dumps(err_body)),
+    )
+    with pytest.raises(NoRoute) as exc_info:
+        provider.get_route((32.77, -96.79), (39.73, -104.98))
+
+    assert "No drivable route between these locations." in str(exc_info.value)
+    assert "2004" not in str(exc_info.value)

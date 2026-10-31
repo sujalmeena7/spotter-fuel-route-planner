@@ -10,6 +10,7 @@ from apps.routing.exceptions import (
     LocationNotFound,
     LocationOutsideUSA,
     NoRoute,
+    RoadNotFound,
     RoutingError,
     UpstreamError,
     UpstreamTimeout,
@@ -66,6 +67,18 @@ def custom_exception_handler(exc: Exception, context: dict) -> Response | None:
             {
                 "error": {
                     "code": "location_outside_usa",
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            },
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    if isinstance(exc, RoadNotFound):
+        return Response(
+            {
+                "error": {
+                    "code": "road_not_found",
                     "message": exc.message,
                     "details": exc.details,
                 }

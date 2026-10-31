@@ -15,16 +15,22 @@ SUFFIX_PATTERN = re.compile(
 )
 
 
+def is_hawaii(lat: float, lon: float) -> bool:
+    """Check if coordinates fall within Hawaii bounding box."""
+    return (18.5 <= lat <= 29.0) and (-161.5 <= lon <= -154.0)
+
+
+def is_alaska(lat: float, lon: float) -> bool:
+    """Check if coordinates fall within Alaska bounding box."""
+    return (51.0 <= lat <= 72.0) and ((-180.0 <= lon <= -129.0) or (170.0 <= lon <= 180.0))
+
+
 def is_within_usa(lat: float, lon: float) -> bool:
     """Validate that coordinates fall within US bounding boxes (Lower 48, AK, HI)."""
     # Lower 48 + DC
     if (24.0 <= lat <= 50.0) and (-125.5 <= lon <= -66.5):
         return True
-    # Alaska
-    if (51.0 <= lat <= 72.0) and ((-180.0 <= lon <= -129.0) or (170.0 <= lon <= 180.0)):
-        return True
-    # Hawaii
-    if (18.5 <= lat <= 29.0) and (-161.5 <= lon <= -154.0):
+    if is_alaska(lat, lon) or is_hawaii(lat, lon):
         return True
     return False
 
@@ -57,6 +63,11 @@ def normalize_city_name(name: str) -> str:
     for _ in range(3):
         s = SUFFIX_PATTERN.sub("", s).strip()
     return " ".join(s.split())
+
+
+CITY_ALIASES = {
+    ("honolulu", "HI"): "urban honolulu",
+}
 
 
 class GazetteerIndex:
@@ -149,7 +160,10 @@ class GazetteerIndex:
         if not self._loaded:
             self.load()
 
-        norm_k = (normalize_city_name(city), state.upper().strip())
+        norm_c = normalize_city_name(city)
+        st_u = state.upper().strip()
+        norm_c = CITY_ALIASES.get((norm_c, st_u), norm_c)
+        norm_k = (norm_c, st_u)
         if norm_k in self.places:
             lat, lon, _ = self.places[norm_k]
             if is_within_usa(lat, lon):

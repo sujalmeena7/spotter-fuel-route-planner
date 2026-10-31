@@ -1,6 +1,7 @@
 """Routing provider protocol, implementations for ORS and OSRM, and caching wrapper."""
 
 import hashlib
+import logging
 import time
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
@@ -10,7 +11,9 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 
-from apps.routing.exceptions import NoRoute, UpstreamError, UpstreamTimeout
+from apps.routing.exceptions import NoRoute, RoadNotFound, UpstreamError, UpstreamTimeout
+
+logger = logging.getLogger(__name__)
 
 # Thread/async safe per-request external call counter
 _EXTERNAL_CALLS: ContextVar[int] = ContextVar("external_api_calls", default=0)
@@ -63,7 +66,13 @@ class RoutingProvider(Protocol):
 
     name: str
 
-    def get_route(self, origin: tuple[float, float], destination: tuple[float, float]) -> Route: ...
+    def get_route(
+        self,
+        origin: tuple[float, float],
+        destination: tuple[float, float],
+        origin_label: str = "",
+        dest_label: str = "",
+    ) -> Route: ...
 
 
 class OpenRouteServiceProvider:
@@ -76,7 +85,13 @@ class OpenRouteServiceProvider:
         self.api_key = api_key
         self.session = session or requests.Session()
 
-    def get_route(self, origin: tuple[float, float], destination: tuple[float, float]) -> Route:
+    def get_route(
+        self,
+        origin: tuple[float, float],
+        destination: tuple[float, float],
+        origin_label: str = "",
+        dest_label: str = "",
+    ) -> Route:
         lat1, lon1 = origin
         lat2, lon2 = destination
 
@@ -86,7 +101,8 @@ class OpenRouteServiceProvider:
             "Accept": "application/json, application/geo+json",
         }
         payload = {
-            "coordinates": [[round(lon1, 6), round(lat1, 6)], [round(lon2, 6), round(lat2, 6)]]
+            "coordinates": [[round(lon1, 6), round(lat1, 6)], [round(lon2, 6), round(lat2, 6)]],
+            "radiuses": [5000, 5000],
         }
 
         # Attempt with 1 retry on 5xx or connection error
@@ -128,9 +144,31 @@ class OpenRouteServiceProvider:
                 raise UpstreamError(f"Malformed response from OpenRouteService: {e}") from e
 
         if resp.status_code in (400, 404):
-            raise NoRoute(f"OpenRouteService found no route: {resp.text}")
+            err_code = None
+            err_msg = ""
+            try:
+                err_data = resp.json().get("error", {})
+                err_code = err_data.get("code")
+                err_msg = err_data.get("message", "")
+            except Exception:
+                pass
 
-        raise UpstreamError(f"OpenRouteService upstream error ({resp.status_code}): {resp.text}")
+            logger.warning(
+                f"OpenRouteService 4xx error ({resp.status_code}): code={err_code}, msg={err_msg}"
+            )
+            if err_code == 2010:
+                if "point 0" in err_msg.lower():
+                    label = origin_label or "origin location"
+                elif "point 1" in err_msg.lower():
+                    label = dest_label or "destination location"
+                else:
+                    label = origin_label or dest_label or "route location"
+                raise RoadNotFound(f"Could not find a road near {label}.")
+
+            raise NoRoute("No drivable route between these locations.")
+
+        logger.error(f"OpenRouteService upstream error ({resp.status_code}): {resp.text}")
+        raise UpstreamError(f"OpenRouteService routing error ({resp.status_code}).")
 
 
 class OSRMProvider:
@@ -195,7 +233,13 @@ class CachedRoutingProvider:
         self.inner = inner
         self.name = inner.name
 
-    def get_route(self, origin: tuple[float, float], destination: tuple[float, float]) -> Route:
+    def get_route(
+        self,
+        origin: tuple[float, float],
+        destination: tuple[float, float],
+        origin_label: str = "",
+        dest_label: str = "",
+    ) -> Route:
         lat1, lon1 = origin
         lat2, lon2 = destination
 
@@ -210,7 +254,9 @@ class CachedRoutingProvider:
 
         # Cold request: increment call counter and call provider
         increment_call_counter()
-        route = self.inner.get_route(origin, destination)
+        route = self.inner.get_route(
+            origin, destination, origin_label=origin_label, dest_label=dest_label
+        )
         cache.set(cache_key, route.to_dict(), timeout=24 * 3600)
         return route
 

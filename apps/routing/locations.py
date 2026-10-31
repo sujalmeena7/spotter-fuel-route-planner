@@ -215,6 +215,11 @@ class LocationResolver:
                 state_code = state_upper
             elif state_lower in US_STATE_NAMES:
                 state_code = US_STATE_NAMES[state_lower]
+            elif len(state_part) == 2 and state_part.isalpha():
+                # Invalid 2-letter state code not in standard 50 US states + DC (e.g. Springfield, ZZ)
+                raise LocationNotFound(
+                    f"Location '{query}' could not be resolved (invalid US state code '{state_part}')."
+                )
 
             if state_code:
                 idx = GazetteerIndex.get_instance()
@@ -269,7 +274,12 @@ class LocationResolver:
             raise UpstreamError(f"ORS geocoding connection failed: {e}") from e
 
         if resp.status_code != 200:
-            raise UpstreamError(f"ORS geocoding upstream error ({resp.status_code}): {resp.text}")
+            import logging
+
+            logging.getLogger(__name__).error(
+                f"ORS geocoding upstream error ({resp.status_code}): {resp.text}"
+            )
+            raise UpstreamError(f"ORS geocoding service error ({resp.status_code}).")
 
         data = resp.json()
         features = data.get("features", [])
@@ -277,6 +287,22 @@ class LocationResolver:
             raise LocationNotFound(f"Location '{query}' could not be resolved.")
 
         first_feat = features[0]
+        props = first_feat.get("properties", {})
+        layer = (props.get("layer") or "").lower()
+        allowed_layers = {
+            "locality",
+            "localadmin",
+            "borough",
+            "neighbourhood",
+            "address",
+            "street",
+            "venue",
+            "postalcode",
+        }
+        if layer and layer not in allowed_layers:
+            raise LocationNotFound(
+                f"Location '{query}' could not be resolved (coarse layer '{layer}')."
+            )
         props = first_feat.get("properties", {})
         ors_state_code = (props.get("region_a") or "").upper()
         ors_state_name = (props.get("region") or "").lower()
