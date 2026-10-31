@@ -65,12 +65,110 @@ export function setupMap({
         localStorage.setItem('fuelroute_theme', theme);
         updateThemeBtn(theme);
         map.setStyle(STYLES[theme]);
-        map.once('style.load', () => {
-            if (currentPlanData) {
-                renderRoute(currentPlanData, false);
-            }
-        });
     }
+
+    // Re-add custom route casing, route line, and candidate layers whenever a style loads
+    function reapplyRouteLayers() {
+        if (!currentPlanData) return;
+        if (map.getSource('route-source')) return;
+
+        const routeFeature = currentPlanData.route.features.find((f) => f.properties.kind === 'route');
+        if (!routeFeature) return;
+        const coords = routeFeature.geometry.coordinates;
+
+        try {
+            // Double-layer Route Line Source
+            map.addSource('route-source', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: coords,
+                    },
+                },
+            });
+
+            // Casing layer (9px wide)
+            map.addLayer({
+                id: 'route-casing',
+                type: 'line',
+                source: 'route-source',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': currentTheme === 'dark' ? '#0F172A' : '#CBD5E1',
+                    'line-width': 9,
+                    'line-opacity': 0.9,
+                },
+            });
+
+            // Brand line layer (5px wide)
+            map.addLayer({
+                id: 'route-line',
+                type: 'line',
+                source: 'route-source',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#2563EB',
+                    'line-width': 5,
+                },
+            });
+
+            // Corridor Candidates Circle Layer (if candidates provided)
+            if (currentPlanData.candidates && currentPlanData.candidates.length > 0) {
+                if (!map.getSource('corridor-candidates-source')) {
+                    const candGeojson = {
+                        type: 'FeatureCollection',
+                        features: currentPlanData.candidates.map((c) => ({
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+                            properties: {
+                                station_id: c.station_id,
+                                price: parseFloat(c.price_per_gallon) || 3.50,
+                                mile_marker: c.mile_marker,
+                            },
+                        })),
+                    };
+
+                    map.addSource('corridor-candidates-source', {
+                        type: 'geojson',
+                        data: candGeojson,
+                    });
+                }
+
+                if (!map.getLayer('corridor-candidates-layer')) {
+                    map.addLayer({
+                        id: 'corridor-candidates-layer',
+                        type: 'circle',
+                        source: 'corridor-candidates-source',
+                        layout: {
+                            visibility: showCandidates ? 'visible' : 'none',
+                        },
+                        paint: {
+                            'circle-radius': 4.5,
+                            'circle-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'price'],
+                                2.80, '#16A34A',
+                                3.50, '#D97706',
+                                4.20, '#DC2626',
+                            ],
+                            'circle-opacity': 0.85,
+                            'circle-stroke-width': 1,
+                            'circle-stroke-color': '#FFFFFF',
+                        },
+                    });
+                }
+            }
+        } catch (err) {
+            // Style not ready yet; will retry on styledata / style.load / idle
+        }
+    }
+
+    map.on('style.load', reapplyRouteLayers);
+    map.on('styledata', reapplyRouteLayers);
+    map.on('idle', reapplyRouteLayers);
 
     updateThemeBtn(currentTheme);
     themeToggleBtn.addEventListener('click', () => {
@@ -127,7 +225,7 @@ export function setupMap({
             source: 'route-source',
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: {
-                'line-color': currentTheme === 'dark' ? '#0F172A' : '#FFFFFF',
+                'line-color': currentTheme === 'dark' ? '#0F172A' : '#CBD5E1',
                 'line-width': 9,
                 'line-opacity': 0.9,
             },
