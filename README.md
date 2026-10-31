@@ -82,11 +82,11 @@ flowchart TD
 
 ## 📊 External API Call Budget
 
-Reviewers judge how few external API calls are made. Spotter's engine achieves the theoretical minimum:
+Every route plan makes at most one routing call, which is the minimum possible. All other work happens locally:
 
 | Request Scenario | Geocoding Calls | Routing Calls | Total External Calls | Cache Status | Typical Latency |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Cold Request** (e.g. Dallas → Denver) | **0** (Census Index) | **1** (ORS/OSRM) | **1** | Miss | **250 – 600 ms** |
+| **Cold Request** (e.g. Dallas → Denver) | **0** (Census Index) | **1** (ORS/OSRM) | **1** | Miss | **~1–4 s total**: local compute **< 50 ms**, the rest is the upstream routing call |
 | **Warm Request** (Identical inputs) | **0** | **0** | **0** | **Hit** | **< 5 ms** |
 | **Location Autocomplete** | **0** (Census Index) | **0** | **0** | Local | **< 2 ms** |
 
