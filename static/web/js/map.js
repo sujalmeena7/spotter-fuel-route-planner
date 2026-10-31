@@ -354,28 +354,77 @@ export function setupMap({
     function addWaypointsAndMarkers(planData) {
         const { summary, fuel_stops: stops } = planData;
 
-        // 1. Start Marker (Green Dot with Ring)
+        // Origin fill check
+        const originFillStop = stops.find((s) => s.kind === 'origin_fill' || s.sequence === 0);
+        const regularStops = stops.filter((s) => s.kind !== 'origin_fill' && s.sequence !== 0);
+
+        // 1. Start Marker (Green Dot with Ring, or Fuel Badge if origin_fill)
         const startEl = document.createElement('div');
         startEl.className = 'custom-marker start-marker';
-        startEl.innerHTML = '<div class="marker-dot green-dot"></div>';
+        startEl.id = 'map-marker-0';
+        startEl.setAttribute('data-sequence', '0');
+
+        let startPopupHtml = `<strong>Origin:</strong> ${summary.start.label}`;
+        if (originFillStop) {
+            startEl.classList.add('has-origin-fill');
+            startEl.innerHTML = '<div class="marker-dot green-dot origin-fill-dot"><span class="origin-pump-icon">⛽</span></div>';
+            const tier = getPriceTier(parseFloat(originFillStop.price_per_gallon), 2.8, 4.2);
+            startPopupHtml = `
+                <div class="marker-popup-card">
+                    <div class="popup-title">⛽ Origin Fill</div>
+                    <div class="popup-sub">${originFillStop.name}</div>
+                    <div class="popup-sub">${originFillStop.city}, ${originFillStop.state} · Mile 0.0</div>
+                    <div class="popup-stats">
+                        <span class="popup-price ${tier.class}">${formatPrice(originFillStop.price_per_gallon)}</span>
+                        <span>${formatGallons(originFillStop.gallons_purchased)} · ${formatMoney(originFillStop.cost_usd)}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            startEl.innerHTML = '<div class="marker-dot green-dot"></div>';
+        }
+
         const startMarker = new maplibregl.Marker({ element: startEl })
             .setLngLat([summary.start.lon, summary.start.lat])
-            .setPopup(new maplibregl.Popup({ offset: 15 }).setHTML(`<strong>Origin:</strong> ${summary.start.label}`))
+            .setPopup(new maplibregl.Popup({ offset: 15 }).setHTML(startPopupHtml))
             .addTo(map);
         activeMarkers.push(startMarker);
 
-        // 2. Fuel Stop Markers (Numbered Price-Colored Circles)
-        const prices = stops.map((s) => parseFloat(s.price_per_gallon));
+        if (originFillStop) {
+            startEl.addEventListener('mouseenter', () => {
+                if (onStopHover) onStopHover(0, true);
+            });
+            startEl.addEventListener('mouseleave', () => {
+                if (onStopHover) onStopHover(0, false);
+            });
+            startEl.addEventListener('click', () => {
+                if (onStopClick) onStopClick(0);
+            });
+        }
+
+        // 2. Fuel Stop Markers (Numbered Price-Colored Circles, excluding origin_fill)
+        const prices = regularStops.map((s) => parseFloat(s.price_per_gallon));
         const minPrice = prices.length ? Math.min(...prices) : 3.0;
         const maxPrice = prices.length ? Math.max(...prices) : 4.0;
 
-        stops.forEach((s) => {
+        regularStops.forEach((s, idx) => {
             const tier = getPriceTier(parseFloat(s.price_per_gallon), minPrice, maxPrice);
             const stopEl = document.createElement('div');
             stopEl.className = `custom-marker fuel-stop-marker ${tier.class}`;
             stopEl.id = `map-marker-${s.sequence}`;
             stopEl.setAttribute('data-sequence', s.sequence);
             stopEl.innerHTML = `<span>${s.sequence}</span>`;
+
+            // Calculate offset if within ~12px / ~0.003 deg of an earlier stop
+            let offset = [0, 0];
+            for (let i = 0; i < idx; i++) {
+                const prev = regularStops[i];
+                if (Math.abs(s.lat - prev.lat) < 0.003 && Math.abs(s.lon - prev.lon) < 0.003) {
+                    offset = [14, -8];
+                    stopEl.classList.add('clustered-offset');
+                    break;
+                }
+            }
 
             const popupContent = `
                 <div class="marker-popup-card">
@@ -389,7 +438,7 @@ export function setupMap({
             `;
             const popup = new maplibregl.Popup({ offset: 18 }).setHTML(popupContent);
 
-            const marker = new maplibregl.Marker({ element: stopEl })
+            const marker = new maplibregl.Marker({ element: stopEl, offset })
                 .setLngLat([s.lon, s.lat])
                 .setPopup(popup)
                 .addTo(map);

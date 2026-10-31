@@ -299,15 +299,15 @@ export function setupPanel({
                 <!-- Stop Card -->
                 <div class="timeline-step ${isOriginFill ? 'origin-fill-step' : 'fuel-stop-step'}" id="timeline-stop-${s.sequence}" data-sequence="${s.sequence}">
                     <div class="step-marker-col">
-                        <div class="stop-badge ${isOriginFill ? 'origin-badge' : tier.class}">${s.sequence}</div>
+                        <div class="stop-badge ${isOriginFill ? 'origin-badge' : tier.class}">${isOriginFill ? '⛽' : s.sequence}</div>
                         <div class="step-line"></div>
                     </div>
                     <div class="step-card stop-card ${isOriginFill ? 'origin-fill-card' : ''}">
                         <div class="step-title-row">
-                            <span class="step-name">${isOriginFill ? `⛽ ${s.name}` : s.name}</span>
+                            <span class="step-name">${isOriginFill ? 'Origin Fill' : `Stop ${s.sequence}: ${s.name}`}</span>
                             <span class="price-chip ${tier.class}">${formatPrice(s.price_per_gallon)} · ${tier.label}</span>
                         </div>
-                        <div class="step-address">${s.address ? s.address + ', ' : ''}${s.city}, ${s.state}</div>
+                        <div class="step-address">${isOriginFill ? s.name : ((s.address ? s.address + ', ' : '') + `${s.city}, ${s.state}`)}</div>
                         
                         <div class="stop-metrics-row">
                             <span class="metric-item"><strong>Mile:</strong> ${s.mile_marker.toFixed(1)}</span>

@@ -822,6 +822,10 @@ body, html {
 .stop-badge.tier-low { background: var(--success); }
 .stop-badge.tier-mid { background: var(--warn); }
 .stop-badge.tier-high { background: var(--danger); }
+.stop-badge.origin-badge {
+    background: #16A34A;
+    font-size: 13px;
+}
 
 .step-line {
     width: 2px;
@@ -1034,10 +1038,19 @@ body, html {
 .fuel-stop-marker.tier-mid { background: #D97706; }
 .fuel-stop-marker.tier-high { background: #DC2626; }
 
-.fuel-stop-marker:hover, .fuel-stop-marker.active-highlight {
-    transform: scale(1.22);
-    z-index: 20;
+.fuel-stop-marker:hover,
+.fuel-stop-marker.active-highlight,
+.custom-marker:hover,
+.custom-marker.active-highlight {
+    transform: scale(1.25);
+    z-index: 9999 !important;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.maplibregl-marker:hover,
+.maplibregl-marker:has(.custom-marker:hover),
+.maplibregl-marker:has(.active-highlight) {
+    z-index: 9999 !important;
 }
 
 .start-marker .marker-dot {
@@ -1047,6 +1060,25 @@ body, html {
     background: #16A34A;
     border: 3px solid #FFFFFF;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.start-marker.has-origin-fill .marker-dot.origin-fill-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #16A34A;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.start-marker.has-origin-fill .origin-pump-icon {
+    display: inline-block;
+    transform: translateY(-0.5px);
 }
 
 .finish-marker .marker-dot {
