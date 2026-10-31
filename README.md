@@ -215,6 +215,33 @@ Benchmark results across 6 canonical nationwide corridors on Python 3.12:
 
 Returns US cities matching the prefix in $< 2$ ms with 0 external calls.
 
+### 3. Error Responses
+All API errors use a single consistent JSON envelope matching `plan.md` Section 3 (no RFC 7807):
+
+```json
+{
+  "error": {
+    "code": "location_outside_usa",
+    "message": "Start location 'Toronto, ON' is outside the United States.",
+    "details": {
+      "input": "Toronto, ON"
+    }
+  }
+}
+```
+
+| HTTP Status | Error Code | Description |
+| :---: | :--- | :--- |
+| **400** | `invalid_input` | Missing required parameters or schema validation failure |
+| **422** | `location_not_found` | Location cannot be resolved to valid US coordinates |
+| **422** | `location_outside_usa` | Location coordinates fall outside US bounds (AK, HI, lower 48) |
+| **422** | `no_route` | Upstream routing provider found no navigable route |
+| **422** | `unreachable` | Route gap exceeds 500-mile vehicle range |
+| **422** | `no_fuel_near_origin` | Truck starts empty and no station is reachable near origin |
+| **502** | `routing_upstream_error` | Upstream routing provider returned 5xx/4xx error |
+| **503** | `routing_timeout` | Upstream routing provider timed out |
+| **429** | `throttled` | IP rate limit exceeded (DRF AnonRateThrottle, 60/min) |
+
 ---
 
 ## 🧪 Testing & Verification
@@ -244,7 +271,7 @@ c:\project\Assenment\
 │   ├── core/                    # Health checks, shared middleware
 │   ├── planner/                 # Routing orchestration & optimization
 │   │   ├── corridor.py          # Vectorized KDTree corridor search
-│   │   ├── exceptions.py        # RFC 7807 problem detail exceptions
+│   │   ├── exceptions.py        # Standard error envelope handler
 │   │   ├── optimizer.py         # Pure-Python greedy fuel solver
 │   │   ├── service.py           # RoutePlanService pipeline
 │   │   └── management/commands/ # benchmark_routes command
