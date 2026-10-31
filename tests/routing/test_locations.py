@@ -32,6 +32,37 @@ def test_resolve_coordinates_outside_usa():
     with pytest.raises(LocationOutsideUSA):
         LocationResolver.resolve("51.5074, -0.1278")
 
+    # "51.5,-0.12" explicit test
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("51.5,-0.12")
+
+
+def test_resolve_international_locations_rejected_without_api():
+    """Verify Canadian provinces and non-US countries are rejected as LocationOutsideUSA without calling API."""
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("Toronto, ON")
+
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("Paris, France")
+
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("Montreal, QC")
+
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("Vancouver, BC")
+
+    with pytest.raises(LocationOutsideUSA):
+        LocationResolver.resolve("Mexico City, Mexico")
+
+
+def test_resolve_empty_string_rejected():
+    """Verify empty string raises LocationNotFound."""
+    with pytest.raises(LocationNotFound):
+        LocationResolver.resolve("")
+
+    with pytest.raises(LocationNotFound):
+        LocationResolver.resolve("   ")
+
 
 def test_resolve_city_state_code():
     """Verify City, ST is resolved offline from Census Gazetteer with 0 external calls."""
@@ -72,7 +103,11 @@ def test_resolve_ors_fallback_mocked(settings, monkeypatch):
                 "features": [
                     {
                         "geometry": {"coordinates": [-98.4936, 29.4241]},
-                        "properties": {"label": "San Antonio, TX, USA"},
+                        "properties": {
+                            "label": "San Antonio, TX, USA",
+                            "region_a": "TX",
+                            "region": "Texas",
+                        },
                     }
                 ]
             }
@@ -98,6 +133,36 @@ def test_resolve_ors_fallback_mocked(settings, monkeypatch):
     assert loc2.external_calls == 0
     assert loc2.lat == 29.4241
     assert calls == 1
+
+
+def test_resolve_ors_mismatched_state_rejected(settings, monkeypatch):
+    """Verify that if ORS returns a result whose state differs from user-typed state, LocationNotFound is raised."""
+    settings.ORS_API_KEY = "mock-key-for-test"
+
+    class MockMismatchedResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "features": [
+                    {
+                        "geometry": {"coordinates": [-80.6009, 40.5348]},
+                        "properties": {
+                            "label": "Toronto, OH, USA",
+                            "region_a": "OH",
+                            "region": "Ohio",
+                        },
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(
+        "requests.get", lambda url, params=None, timeout=None: MockMismatchedResponse()
+    )
+
+    # User typed TX, but ORS returned OH
+    with pytest.raises(LocationNotFound):
+        LocationResolver.resolve("Toronto, TX")
 
 
 @pytest.mark.django_db

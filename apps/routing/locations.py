@@ -1,5 +1,6 @@
 """Offline-first location resolution and geocoding."""
 
+import hashlib
 import re
 from dataclasses import dataclass
 
@@ -13,7 +14,7 @@ from apps.routing.exceptions import (
     UpstreamError,
     UpstreamTimeout,
 )
-from apps.stations.gazetteer import GazetteerIndex
+from apps.stations.gazetteer import GazetteerIndex, is_within_usa
 
 US_STATE_NAMES = {
     "alabama": "AL",
@@ -71,21 +72,82 @@ US_STATE_NAMES = {
 
 US_STATE_CODES = set(US_STATE_NAMES.values())
 
+CANADIAN_PROVINCE_CODES = {
+    "AB",
+    "BC",
+    "MB",
+    "NB",
+    "NL",
+    "NS",
+    "NT",
+    "NU",
+    "ON",
+    "PE",
+    "QC",
+    "SK",
+    "YT",
+}
+
+CANADIAN_PROVINCES = {
+    "alberta",
+    "british columbia",
+    "manitoba",
+    "new brunswick",
+    "newfoundland",
+    "newfoundland and labrador",
+    "nova scotia",
+    "northwest territories",
+    "nunavut",
+    "ontario",
+    "prince edward island",
+    "quebec",
+    "saskatchewan",
+    "yukon",
+    "canada",
+}
+
+NON_US_COUNTRIES = {
+    "canada",
+    "mexico",
+    "france",
+    "germany",
+    "united kingdom",
+    "uk",
+    "england",
+    "scotland",
+    "wales",
+    "ireland",
+    "spain",
+    "italy",
+    "china",
+    "japan",
+    "australia",
+    "brazil",
+    "india",
+    "russia",
+    "netherlands",
+    "belgium",
+    "switzerland",
+    "sweden",
+    "norway",
+    "denmark",
+    "finland",
+    "poland",
+    "austria",
+    "portugal",
+    "greece",
+    "turkey",
+    "egypt",
+    "south africa",
+    "argentina",
+    "chile",
+    "colombia",
+    "peru",
+    "new zealand",
+    "south korea",
+}
+
 LAT_LON_REGEX = re.compile(r"^\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*$")
-
-
-def is_within_usa(lat: float, lon: float) -> bool:
-    """Validate that coordinates fall within US bounding boxes (Lower 48, AK, HI)."""
-    # Lower 48 + DC
-    if (24.0 <= lat <= 50.0) and (-125.5 <= lon <= -66.5):
-        return True
-    # Alaska
-    if (51.0 <= lat <= 72.0) and ((-180.0 <= lon <= -129.0) or (170.0 <= lon <= 180.0)):
-        return True
-    # Hawaii
-    if (18.5 <= lat <= 29.0) and (-161.5 <= lon <= -154.0):
-        return True
-    return False
 
 
 @dataclass(frozen=True)
@@ -108,6 +170,14 @@ class LocationResolver:
         if not query:
             raise LocationNotFound("Location string cannot be empty.")
 
+        query_lower = query.lower()
+        if (
+            query_lower in NON_US_COUNTRIES
+            or query_lower in CANADIAN_PROVINCES
+            or query.upper() in CANADIAN_PROVINCE_CODES
+        ):
+            raise LocationOutsideUSA(f"Location '{query}' is outside the United States.")
+
         # 1. Check for lat, lon coordinate pattern
         match = LAT_LON_REGEX.match(query)
         if match:
@@ -126,16 +196,25 @@ class LocationResolver:
             )
 
         # 2. Check for 'City, ST' or 'City, State' pattern
+        state_code = None
         if "," in query:
             parts = [p.strip() for p in query.split(",", 1)]
             city_part, state_part = parts[0], parts[1]
-            state_code = None
-
             state_upper = state_part.upper()
+            state_lower = state_part.lower()
+
+            # If suffix is a Canadian province or non-US country, reject immediately without calling API
+            if (
+                state_upper in CANADIAN_PROVINCE_CODES
+                or state_lower in CANADIAN_PROVINCES
+                or state_lower in NON_US_COUNTRIES
+            ):
+                raise LocationOutsideUSA(f"Location '{query}' is outside the United States.")
+
             if state_upper in US_STATE_CODES:
                 state_code = state_upper
-            elif state_part.lower() in US_STATE_NAMES:
-                state_code = US_STATE_NAMES[state_part.lower()]
+            elif state_lower in US_STATE_NAMES:
+                state_code = US_STATE_NAMES[state_lower]
 
             if state_code:
                 idx = GazetteerIndex.get_instance()
@@ -161,10 +240,8 @@ class LocationResolver:
                 f"Location '{query}' could not be resolved offline and no ORS API key is configured."
             )
 
-        import hashlib
-
-        query_hash = hashlib.sha256(query.lower().encode("utf-8")).hexdigest()
-        cache_key = f"ors_geocode_{query_hash}"
+        query_hash = hashlib.sha1(query.lower().strip().encode("utf-8")).hexdigest()
+        cache_key = f"geocode_{query_hash}"
         cached_result = cache.get(cache_key)
         if cached_result:
             return ResolvedLocation(
@@ -200,6 +277,25 @@ class LocationResolver:
             raise LocationNotFound(f"Location '{query}' could not be resolved.")
 
         first_feat = features[0]
+        props = first_feat.get("properties", {})
+        ors_state_code = (props.get("region_a") or "").upper()
+        ors_state_name = (props.get("region") or "").lower()
+
+        # If user typed a specific US state, assert that ORS result matches that state
+        if state_code:
+            if ors_state_code and ors_state_code != state_code:
+                raise LocationNotFound(
+                    f"Location '{query}' not found in {state_code} (resolved to {ors_state_code})."
+                )
+            if (
+                ors_state_name
+                and US_STATE_NAMES.get(ors_state_name)
+                and US_STATE_NAMES.get(ors_state_name) != state_code
+            ):
+                raise LocationNotFound(
+                    f"Location '{query}' not found in {state_code} (resolved to {ors_state_name})."
+                )
+
         coords = first_feat.get("geometry", {}).get("coordinates", [])
         if len(coords) < 2:
             raise LocationNotFound(f"Location '{query}' returned invalid coordinates.")
