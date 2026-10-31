@@ -180,7 +180,10 @@ def test_openrouteservice_error_2010_maps_to_road_not_found():
     )
     with pytest.raises(RoadNotFound) as exc_info:
         provider.get_route(
-            (32.77, -96.79), (39.73, -104.98), origin_label="Dallas, TX", dest_label="Denver, CO"
+            (32.77, -96.79),
+            (39.73, -104.98),
+            origin_label="Dallas, TX",
+            destination_label="Denver, CO",
         )
 
     assert "Could not find a road near Dallas, TX." in str(exc_info.value)
@@ -206,3 +209,78 @@ def test_openrouteservice_error_2004_maps_to_no_route():
 
     assert "No drivable route between these locations." in str(exc_info.value)
     assert "2004" not in str(exc_info.value)
+
+
+def test_routing_provider_signatures_match_protocol():
+    """Verify all provider implementations match the RoutingProvider Protocol signature."""
+    import inspect
+
+    from apps.routing.providers import (
+        CachedRoutingProvider,
+        OpenRouteServiceProvider,
+        OSRMProvider,
+        RoutingProvider,
+    )
+
+    proto_sig = inspect.signature(RoutingProvider.get_route)
+    assert inspect.signature(OpenRouteServiceProvider.get_route) == proto_sig
+    assert inspect.signature(OSRMProvider.get_route) == proto_sig
+    assert inspect.signature(CachedRoutingProvider.get_route) == proto_sig
+
+
+def test_osrm_error_nosegment_maps_to_road_not_found():
+    """Verify OSRM NoSegment error maps to RoadNotFound with origin/dest label."""
+    err_body_0 = {
+        "code": "NoSegment",
+        "message": "Could not find a matching segment for coordinate 0",
+    }
+    provider = OSRMProvider(
+        session=MockSession(status_code=400, json_data=err_body_0, text=json.dumps(err_body_0))
+    )
+    with pytest.raises(RoadNotFound) as exc_info:
+        provider.get_route(
+            (32.77, -96.79),
+            (39.73, -104.98),
+            origin_label="Dallas, TX",
+            destination_label="Denver, CO",
+        )
+    assert "Could not find a road near Dallas, TX." in str(exc_info.value)
+
+    err_body_1 = {
+        "code": "NoSegment",
+        "message": "Could not find a matching segment for coordinate 1",
+    }
+    provider_1 = OSRMProvider(
+        session=MockSession(status_code=400, json_data=err_body_1, text=json.dumps(err_body_1))
+    )
+    with pytest.raises(RoadNotFound) as exc_info_1:
+        provider_1.get_route(
+            (32.77, -96.79),
+            (39.73, -104.98),
+            origin_label="Dallas, TX",
+            destination_label="Denver, CO",
+        )
+    assert "Could not find a road near Denver, CO." in str(exc_info_1.value)
+
+
+def test_osrm_error_noroute_maps_to_no_route():
+    """Verify OSRM NoRoute error maps to NoRoute exception without raw body leakage."""
+    err_body = {"code": "NoRoute", "message": "Impossible route between points"}
+    provider = OSRMProvider(
+        session=MockSession(status_code=400, json_data=err_body, text=json.dumps(err_body))
+    )
+    with pytest.raises(NoRoute) as exc_info:
+        provider.get_route((32.77, -96.79), (39.73, -104.98))
+    assert "No drivable route between these locations." in str(exc_info.value)
+
+
+def test_osrm_provider_timeout_mapping():
+    """Verify OSRM timeout maps to UpstreamTimeout."""
+
+    class TimeoutSession:
+        def get(self, *args, **kwargs):
+            raise requests.exceptions.Timeout("OSRM Connection timed out")
+
+    osrm = OSRMProvider(session=TimeoutSession())
+    with pytest.raises(UpstreamTimeout):
+        osrm.get_route((32.0, -96.0), (39.0, -104.0))

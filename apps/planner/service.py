@@ -134,7 +134,7 @@ class RoutePlanService:
             (origin.lat, origin.lon),
             (dest.lat, dest.lon),
             origin_label=origin.label,
-            dest_label=dest.label,
+            destination_label=dest.label,
         )
         t_routing = (time.perf_counter() - t_route_start) * 1000
 

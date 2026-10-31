@@ -21,11 +21,20 @@ class Unreachable(OptimizerError):
     """Raised when distance between consecutive reachable stations exceeds range."""
 
     def __init__(self, gap_start_mile: float, gap_end_mile: float):
-        super().__init__(
-            f"Unreachable route gap from mile {gap_start_mile:.1f} to {gap_end_mile:.1f}."
-        )
         self.gap_start_mile = gap_start_mile
         self.gap_end_mile = gap_end_mile
+        gap_dist = round(gap_end_mile - gap_start_mile)
+        if gap_start_mile == 0.0:
+            msg = (
+                f"Not enough fuel to reach the first station ({gap_dist} mi away). "
+                "Increase starting fuel or choose another start."
+            )
+        else:
+            msg = (
+                f"Not enough fuel to bridge the route gap between mile {gap_start_mile:.1f} and "
+                f"mile {gap_end_mile:.1f} ({gap_dist} mi gap exceeds vehicle range)."
+            )
+        super().__init__(msg)
 
 
 @dataclass(frozen=True)

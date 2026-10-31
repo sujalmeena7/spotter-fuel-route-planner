@@ -71,7 +71,7 @@ class RoutingProvider(Protocol):
         origin: tuple[float, float],
         destination: tuple[float, float],
         origin_label: str = "",
-        dest_label: str = "",
+        destination_label: str = "",
     ) -> Route: ...
 
 
@@ -90,7 +90,7 @@ class OpenRouteServiceProvider:
         origin: tuple[float, float],
         destination: tuple[float, float],
         origin_label: str = "",
-        dest_label: str = "",
+        destination_label: str = "",
     ) -> Route:
         lat1, lon1 = origin
         lat2, lon2 = destination
@@ -160,9 +160,9 @@ class OpenRouteServiceProvider:
                 if "point 0" in err_msg.lower():
                     label = origin_label or "origin location"
                 elif "point 1" in err_msg.lower():
-                    label = dest_label or "destination location"
+                    label = destination_label or "destination location"
                 else:
-                    label = origin_label or dest_label or "route location"
+                    label = origin_label or destination_label or "route location"
                 raise RoadNotFound(f"Could not find a road near {label}.")
 
             raise NoRoute("No drivable route between these locations.")
@@ -180,7 +180,13 @@ class OSRMProvider:
     def __init__(self, session: requests.Session | None = None):
         self.session = session or requests.Session()
 
-    def get_route(self, origin: tuple[float, float], destination: tuple[float, float]) -> Route:
+    def get_route(
+        self,
+        origin: tuple[float, float],
+        destination: tuple[float, float],
+        origin_label: str = "",
+        destination_label: str = "",
+    ) -> Route:
         lat1, lon1 = origin
         lat2, lon2 = destination
 
@@ -204,26 +210,62 @@ class OSRMProvider:
         if resp is None:
             raise UpstreamError("OSRM failed to respond.")
 
+        def _parse_osrm_error(r: requests.Response) -> tuple[str, str]:
+            try:
+                data = r.json()
+                return str(data.get("code", "")), str(data.get("message", ""))
+            except Exception:
+                return "", ""
+
         if resp.status_code == 200:
             try:
                 data = resp.json()
-                if data.get("code") != "Ok" or not data.get("routes"):
-                    raise NoRoute("OSRM found no valid route.")
-                route = data["routes"][0]
-                coords = route["geometry"]["coordinates"]
-                return Route(
-                    coordinates=coords,
-                    distance_m=float(route["distance"]),
-                    duration_s=float(route["duration"]),
-                    provider=self.name,
-                )
-            except (KeyError, IndexError, ValueError) as e:
+            except Exception as e:
                 raise UpstreamError(f"Malformed response from OSRM: {e}") from e
 
-        if resp.status_code in (400, 404):
-            raise NoRoute(f"OSRM found no route: {resp.text}")
+            code = data.get("code")
+            if code == "Ok" and data.get("routes"):
+                try:
+                    route = data["routes"][0]
+                    coords = route["geometry"]["coordinates"]
+                    return Route(
+                        coordinates=coords,
+                        distance_m=float(route["distance"]),
+                        duration_s=float(route["duration"]),
+                        provider=self.name,
+                    )
+                except (KeyError, IndexError, ValueError) as e:
+                    raise UpstreamError(f"Malformed response from OSRM: {e}") from e
 
-        raise UpstreamError(f"OSRM upstream error ({resp.status_code}): {resp.text}")
+            err_code = str(code or "")
+            err_msg = str(data.get("message", ""))
+            if err_code == "NoSegment":
+                if "0" in err_msg:
+                    label = origin_label or "origin location"
+                elif "1" in err_msg:
+                    label = destination_label or "destination location"
+                else:
+                    label = origin_label or destination_label or "route location"
+                raise RoadNotFound(f"Could not find a road near {label}.")
+
+            raise NoRoute("No drivable route between these locations.")
+
+        if resp.status_code in (400, 404):
+            err_code, err_msg = _parse_osrm_error(resp)
+            logger.warning(f"OSRM 4xx error ({resp.status_code}): code={err_code}, msg={err_msg}")
+            if err_code == "NoSegment":
+                if "0" in err_msg:
+                    label = origin_label or "origin location"
+                elif "1" in err_msg:
+                    label = destination_label or "destination location"
+                else:
+                    label = origin_label or destination_label or "route location"
+                raise RoadNotFound(f"Could not find a road near {label}.")
+
+            raise NoRoute("No drivable route between these locations.")
+
+        logger.error(f"OSRM upstream error ({resp.status_code}): {resp.text}")
+        raise UpstreamError(f"OSRM routing error ({resp.status_code}).")
 
 
 class CachedRoutingProvider:
@@ -238,7 +280,7 @@ class CachedRoutingProvider:
         origin: tuple[float, float],
         destination: tuple[float, float],
         origin_label: str = "",
-        dest_label: str = "",
+        destination_label: str = "",
     ) -> Route:
         lat1, lon1 = origin
         lat2, lon2 = destination
@@ -255,7 +297,7 @@ class CachedRoutingProvider:
         # Cold request: increment call counter and call provider
         increment_call_counter()
         route = self.inner.get_route(
-            origin, destination, origin_label=origin_label, dest_label=dest_label
+            origin, destination, origin_label=origin_label, destination_label=destination_label
         )
         cache.set(cache_key, route.to_dict(), timeout=24 * 3600)
         return route

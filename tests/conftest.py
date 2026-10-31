@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.management import call_command
 
-from apps.routing.providers import OpenRouteServiceProvider, Route
+from apps.routing.providers import OpenRouteServiceProvider, OSRMProvider, Route
 from apps.stations.index import StationIndex
 from apps.stations.models import Station
 
@@ -74,3 +74,24 @@ def mock_ors_route(monkeypatch, ensure_db_stations_and_clean_cache):
 
     monkeypatch.setattr(OpenRouteServiceProvider, "get_route", mock_get_route)
     return dallas_route
+
+
+@pytest.fixture
+def mock_osrm_route(monkeypatch, ensure_db_stations_and_clean_cache):
+    """Mocks OSRMProvider to return recorded fixtures without network."""
+    dallas_path = settings.BASE_DIR / "tests" / "fixtures" / "osrm_dallas_denver.json"
+    with open(dallas_path, encoding="utf-8") as f:
+        dallas_data = json.load(f)
+    d_route = dallas_data["routes"][0]
+    osrm_route = Route(
+        coordinates=d_route["geometry"]["coordinates"],
+        distance_m=float(d_route["distance"]),
+        duration_s=float(d_route["duration"]),
+        provider="osrm",
+    )
+
+    def mock_get_route(self, origin, destination, *args, **kwargs):
+        return osrm_route
+
+    monkeypatch.setattr(OSRMProvider, "get_route", mock_get_route)
+    return osrm_route

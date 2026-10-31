@@ -324,3 +324,57 @@ def test_error_invalid_state_code_returns_422_location_not_found():
     assert resp.status_code == 422
     err = resp.json()["error"]
     assert err["code"] == "location_not_found"
+
+
+@pytest.mark.django_db
+def test_e2e_api_osrm_fallback_when_no_ors_key(mock_osrm_route):
+    """With ORS_API_KEY='' (override_settings), routing falls back to OSRM.
+
+    Cold request returns 200 with routing_provider='osrm' and external_api_calls=1,
+    and warm request returns 0 external calls.
+    """
+    from django.test import override_settings
+
+    client = Client()
+    with override_settings(ORS_API_KEY=""):
+        # 1. Cold request
+        cache.clear()
+        resp_cold = client.get("/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO")
+        assert resp_cold.status_code == 200
+        data_cold = resp_cold.json()
+        assert data_cold["meta"]["routing_provider"] == "osrm"
+        assert data_cold["meta"]["external_api_calls"] == 1
+        assert data_cold["meta"]["cache_hit"] is False
+        assert len(data_cold["fuel_stops"]) > 0
+        assert data_cold["summary"]["distance_miles"] > 700
+
+        # 2. Warm request
+        resp_warm = client.get("/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO")
+        assert resp_warm.status_code == 200
+        data_warm = resp_warm.json()
+        assert data_warm["meta"]["routing_provider"] == "osrm"
+        assert data_warm["meta"]["external_api_calls"] == 0
+        assert data_warm["meta"]["cache_hit"] is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("provider_name", ["openrouteservice", "osrm"])
+def test_e2e_api_happy_path_both_providers(provider_name, mock_ors_route, mock_osrm_route):
+    """Verify identical happy-path API functionality regardless of routing provider."""
+    from django.test import override_settings
+
+    api_key = "mock-key" if provider_name == "openrouteservice" else ""
+    client = Client()
+
+    with override_settings(ORS_API_KEY=api_key):
+        cache.clear()
+        resp = client.get(
+            "/api/v1/route-plan/?start=Dallas,TX&finish=Denver,CO&optimize_for=practical"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["meta"]["routing_provider"] == provider_name
+        assert data["summary"]["distance_miles"] > 700
+        assert data["summary"]["fuel_stops"] > 0
+        assert len(data["fuel_stops"]) == data["summary"]["fuel_stops"]
+        assert data["route"]["type"] == "FeatureCollection"
