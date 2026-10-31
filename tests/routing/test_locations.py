@@ -184,9 +184,16 @@ def test_autocomplete_endpoint():
 
 
 def test_resolve_invalid_state_code_rejected_offline():
-    """Verify City, XX with invalid 2-letter state code returns 422 LocationNotFound with 0 calls."""
-    with pytest.raises(LocationNotFound):
+    """Verify City, XX with invalid 2-letter state code returns 422 LocationNotFound with clean user message."""
+    with pytest.raises(LocationNotFound) as exc_info:
         LocationResolver.resolve("Springfield, ZZ")
+    exc = exc_info.value
+    assert (
+        exc.message
+        == "We couldn't find 'Springfield, ZZ'. Try 'City, ST' or an address like '123 Main St, Austin, TX'."
+    )
+    assert "(invalid US state code" not in exc.message
+    assert "invalid US state code 'ZZ'" in exc.details.get("reason", "")
 
 
 def test_resolve_ors_coarse_layers_rejected(settings, monkeypatch):
@@ -214,5 +221,14 @@ def test_resolve_ors_coarse_layers_rejected(settings, monkeypatch):
     monkeypatch.setattr("requests.get", lambda url, params=None, timeout=None: MockCoarseResponse())
 
     # "Nowhereville, TX" should reject the state-level region centroid
-    with pytest.raises(LocationNotFound):
+    with pytest.raises(LocationNotFound) as exc_info:
         LocationResolver.resolve("Nowhereville, TX")
+    exc = exc_info.value
+    assert (
+        exc.message
+        == "We couldn't find 'Nowhereville, TX'. Try 'City, ST' or an address like '123 Main St, Austin, TX'."
+    )
+    assert "coarse layer" not in exc.message
+    assert "region" not in exc.message
+    assert exc.details.get("layer") == "region"
+    assert "coarse layer 'region'" in exc.details.get("reason", "")

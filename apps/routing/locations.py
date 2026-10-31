@@ -168,7 +168,10 @@ class LocationResolver:
     def resolve(cls, text: str) -> ResolvedLocation:
         query = text.strip()
         if not query:
-            raise LocationNotFound("Location string cannot be empty.")
+            raise LocationNotFound(
+                "Location string cannot be empty. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                details={"reason": "empty_input"},
+            )
 
         query_lower = query.lower()
         if (
@@ -218,7 +221,8 @@ class LocationResolver:
             elif len(state_part) == 2 and state_part.isalpha():
                 # Invalid 2-letter state code not in standard 50 US states + DC (e.g. Springfield, ZZ)
                 raise LocationNotFound(
-                    f"Location '{query}' could not be resolved (invalid US state code '{state_part}')."
+                    f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                    details={"reason": f"invalid US state code '{state_part}'", "query": query},
                 )
 
             if state_code:
@@ -242,7 +246,8 @@ class LocationResolver:
         ors_key = getattr(settings, "ORS_API_KEY", "").strip()
         if not ors_key:
             raise LocationNotFound(
-                f"Location '{query}' could not be resolved offline and no ORS API key is configured."
+                f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                details={"reason": "offline_lookup_failed_no_ors_key", "query": query},
             )
 
         query_hash = hashlib.sha1(query.lower().strip().encode("utf-8")).hexdigest()
@@ -284,7 +289,10 @@ class LocationResolver:
         data = resp.json()
         features = data.get("features", [])
         if not features:
-            raise LocationNotFound(f"Location '{query}' could not be resolved.")
+            raise LocationNotFound(
+                f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                details={"reason": "no_geocoding_results", "query": query},
+            )
 
         first_feat = features[0]
         props = first_feat.get("properties", {})
@@ -301,7 +309,12 @@ class LocationResolver:
         }
         if layer and layer not in allowed_layers:
             raise LocationNotFound(
-                f"Location '{query}' could not be resolved (coarse layer '{layer}')."
+                f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                details={
+                    "reason": f"coarse layer '{layer}'",
+                    "layer": layer,
+                    "query": query,
+                },
             )
         props = first_feat.get("properties", {})
         ors_state_code = (props.get("region_a") or "").upper()
@@ -311,7 +324,13 @@ class LocationResolver:
         if state_code:
             if ors_state_code and ors_state_code != state_code:
                 raise LocationNotFound(
-                    f"Location '{query}' not found in {state_code} (resolved to {ors_state_code})."
+                    f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                    details={
+                        "reason": f"mismatched_state_code: expected {state_code}, got {ors_state_code}",
+                        "expected_state": state_code,
+                        "resolved_state": ors_state_code,
+                        "query": query,
+                    },
                 )
             if (
                 ors_state_name
@@ -319,12 +338,21 @@ class LocationResolver:
                 and US_STATE_NAMES.get(ors_state_name) != state_code
             ):
                 raise LocationNotFound(
-                    f"Location '{query}' not found in {state_code} (resolved to {ors_state_name})."
+                    f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                    details={
+                        "reason": f"mismatched_state_name: expected {state_code}, got {ors_state_name}",
+                        "expected_state": state_code,
+                        "resolved_state": ors_state_name,
+                        "query": query,
+                    },
                 )
 
         coords = first_feat.get("geometry", {}).get("coordinates", [])
         if len(coords) < 2:
-            raise LocationNotFound(f"Location '{query}' returned invalid coordinates.")
+            raise LocationNotFound(
+                f"We couldn't find '{query}'. Try 'City, ST' or an address like '123 Main St, Austin, TX'.",
+                details={"reason": "invalid_coordinates_in_feature", "query": query},
+            )
 
         lon, lat = float(coords[0]), float(coords[1])
         if not is_within_usa(lat, lon):
