@@ -158,16 +158,14 @@ export function setupPanel({
         clearError();
         const { summary, fuel_stops: stops, meta, map_url } = planData;
 
-        // Route Summary Bar (collapsed on mobile when results load)
+        // Route Summary Bar (collapse full input card when results load)
         const summaryText = document.getElementById('route-summary-text');
         if (summaryBar && summaryText && inputCard) {
             summaryText.textContent = `${summary.start.label} → ${summary.finish.label}`;
             summaryBar.style.display = 'flex';
-            if (window.innerWidth <= 900) {
-                inputCard.classList.add('collapsed');
-                if (exampleChips) exampleChips.style.display = 'none';
-                if (editBtn) editBtn.textContent = 'Edit';
-            }
+            inputCard.classList.add('collapsed');
+            if (exampleChips) exampleChips.style.display = 'none';
+            if (editBtn) editBtn.textContent = 'Edit';
         }
 
         // Performance badge
@@ -444,6 +442,22 @@ function setupBottomSheet(sheetEl) {
     const handleEl = sheetEl.querySelector('.drag-handle');
     if (!handleEl) return;
 
+    function updateSnapClass(heightPx) {
+        const vh = window.innerHeight;
+        if (heightPx <= vh * 0.35) {
+            document.body.classList.add('sheet-peek');
+            document.body.classList.remove('sheet-expanded');
+        } else {
+            document.body.classList.remove('sheet-peek');
+            document.body.classList.add('sheet-expanded');
+        }
+    }
+
+    // Initial snap state on mobile
+    if (window.innerWidth < 1024) {
+        updateSnapClass(window.innerHeight * 0.52);
+    }
+
     // Snap heights: peek (18vh), half (50vh), full (90vh)
     const getSnapHeights = () => {
         const vh = window.innerHeight;
@@ -461,6 +475,7 @@ function setupBottomSheet(sheetEl) {
             sheetEl.style.transition = 'none';
         }
         sheetEl.style.height = `${heightPx}px`;
+        updateSnapClass(heightPx);
     }
 
     handleEl.addEventListener('pointerdown', (e) => {

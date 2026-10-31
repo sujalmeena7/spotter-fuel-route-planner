@@ -1250,11 +1250,16 @@ body, html {
         right: 48px;
     }
 
+    /* Hide floating price legend when bottom sheet is at half or full snap */
     .price-legend-box {
+        display: none !important;
+    }
+
+    body.sheet-peek .price-legend-box {
+        display: block !important;
         left: 16px;
         right: auto;
-        bottom: calc(52vh + 12px);
-        display: block !important;
+        bottom: calc(20vh + 12px);
     }
 }
 
@@ -1274,11 +1279,11 @@ body, html {
         display: none;
     }
 
-    .price-legend-box {
+    body.sheet-peek .price-legend-box {
+        display: block !important;
         left: 12px;
         right: auto;
-        bottom: calc(48vh + 12px);
-        display: block !important;
+        bottom: calc(20vh + 12px);
         padding: 6px 10px;
         font-size: 10px;
     }
