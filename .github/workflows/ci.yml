@@ -31,3 +31,56 @@ jobs:
 
       - name: Run Pytest
         run: pytest
+
+  fresh-clone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run Zero-Setup Fresh Clone Verification (No .env)
+        run: |
+          python manage.py migrate
+          python manage.py import_fuel_prices
+          python manage.py load_stations
+          python -c "
+          import os, django, json
+          from unittest.mock import patch
+          from django.test import Client
+          from apps.routing.providers import Route
+
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+          django.setup()
+
+          from django.conf import settings
+          fixture_path = settings.BASE_DIR / 'tests' / 'fixtures' / 'osrm_dallas_denver.json'
+          with open(fixture_path, encoding='utf-8') as f:
+              d = json.load(f)
+          r_data = d['routes'][0]
+          mock_route = Route(
+              coordinates=r_data['geometry']['coordinates'],
+              distance_m=float(r_data['distance']),
+              duration_s=float(r_data['duration']),
+              provider='osrm',
+          )
+
+          with patch('apps.routing.providers.OSRMProvider.get_route', return_value=mock_route):
+              client = Client()
+              resp = client.get('/api/v1/route-plan/?start=Dallas, TX&finish=Denver, CO')
+              assert resp.status_code == 200, f'Expected 200, got {resp.status_code}: {resp.content}'
+              data = resp.json()
+              assert data['meta']['routing_provider'] == 'osrm'
+              assert data['summary']['total_fuel_cost_usd']
+              assert len(data['fuel_stops']) > 0
+              print('Zero-setup fresh clone verified: HTTP 200,', data['summary']['distance_miles'], 'mi,', data['summary']['fuel_stops'], 'stops.')
+          "
