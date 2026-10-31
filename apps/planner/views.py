@@ -47,6 +47,12 @@ class RoutePlanView(APIView):
                 required=False,
                 type=bool,
             ),
+            OpenApiParameter(
+                name="optimize_for",
+                description="Optimization strategy: 'practical' (default) or 'cost'",
+                required=False,
+                type=str,
+            ),
         ],
         responses={200: RoutePlanResponseSerializer},
         examples=[
@@ -57,6 +63,7 @@ class RoutePlanView(APIView):
                     "finish": "Denver, CO",
                     "start_fuel_gallons": 0.0,
                     "include_candidates": False,
+                    "optimize_for": "practical",
                 },
                 request_only=True,
             )
@@ -83,12 +90,14 @@ class RoutePlanView(APIView):
         finish = data["finish"]
         start_fuel = float(data.get("start_fuel_gallons", 0.0))
         include_candidates = bool(data.get("include_candidates", False))
+        optimize_for = str(data.get("optimize_for", "practical"))
 
         payload = RoutePlanService.plan(
             start_str=start,
             finish_str=finish,
             start_fuel=start_fuel,
             include_candidates=include_candidates,
+            optimize_for=optimize_for,
         )
 
         meta = payload.get("meta", {})

@@ -1,14 +1,18 @@
+import json
 import random
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 
+from apps.planner.corridor import find_corridor_stations
 from apps.planner.optimizer import (
     NoFuelNearOrigin,
     Stop,
     Unreachable,
     optimize_fuel,
 )
+from apps.routing.providers import Route
 from tests.planner.dp_reference import solve_dp
 
 
@@ -161,9 +165,14 @@ def test_dp_cross_check_200_seeded_cases():
 
         total_miles = curr_mile + (random.randint(2, 40) * mpg)
 
-        # Run Greedy
+        # Run Greedy in pure cost mode
         res = optimize_fuel(
-            stops, total_miles=total_miles, tank_gal=tank_gal, mpg=mpg, start_fuel=0.0
+            stops,
+            total_miles=total_miles,
+            tank_gal=tank_gal,
+            mpg=mpg,
+            start_fuel=0.0,
+            optimize_for="cost",
         )
         greedy_raw_cost = sum(s.gallons_purchased * s.price_per_gallon for s in res.stops)
 
@@ -175,3 +184,61 @@ def test_dp_cross_check_200_seeded_cases():
         assert diff < 1e-6, (
             f"Case {case_num} failed: greedy={greedy_raw_cost}, dp={dp_cost}, diff={diff}"
         )
+
+
+@pytest.mark.django_db
+def test_practical_stop_consolidation_ny_to_la():
+    """Verify practical dispatch mode on NY->LA consolidates to <= 9 stops within 2% of pure cost."""
+    from django.core.management import call_command
+
+    from apps.stations.index import StationIndex
+    from apps.stations.models import Station
+
+    if not Station.objects.filter(lat__isnull=False).exists():
+        call_command("import_fuel_prices")
+        call_command("load_stations")
+        StationIndex.refresh()
+
+    fixture_path = settings.BASE_DIR / "tests" / "fixtures" / "benchmark_routes.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        routes = json.load(f)
+
+    ny_la = routes["New York, NY -> Los Angeles, CA"]
+    route = Route(
+        coordinates=ny_la["coordinates"],
+        distance_m=ny_la["distance_m"],
+        duration_s=ny_la["duration_s"],
+        provider="benchmark",
+    )
+    corridor_stations = find_corridor_stations(route, corridor_miles=10.0)
+    stops = [Stop(mile=cs.mile_marker, price=cs.price_float, ref=cs) for cs in corridor_stations]
+
+    pure_plan = optimize_fuel(
+        stops=stops,
+        total_miles=route.distance_miles,
+        tank_gal=50.0,
+        mpg=10.0,
+        start_fuel=0.0,
+        optimize_for="cost",
+    )
+    practical_plan = optimize_fuel(
+        stops=stops,
+        total_miles=route.distance_miles,
+        tank_gal=50.0,
+        mpg=10.0,
+        start_fuel=0.0,
+        optimize_for="practical",
+    )
+
+    pure_stops_count = len(pure_plan.stops)
+    practical_stops_count = len(practical_plan.stops)
+    pure_cost = float(pure_plan.total_cost_usd)
+    practical_cost = float(practical_plan.total_cost_usd)
+
+    # In pure greedy, NY->LA had 17 stops
+    assert pure_stops_count == 17
+    # In practical mode, stops must be <= 9
+    assert practical_stops_count <= 9
+    # Total cost must be within 2% of pure cost optimum
+    assert practical_cost <= 1.02 * pure_cost
+    assert practical_cost >= pure_cost

@@ -1,7 +1,7 @@
 """Pure-Python fuel optimizer for long-haul trucking (no Django imports).
 
 Implements Section 4.3 greedy refueling algorithm with configurable tank, MPG,
-and origin approach logic.
+origin approach logic, and practical stop consolidation.
 """
 
 from dataclasses import dataclass
@@ -64,7 +64,7 @@ class PlanResult:
     mpg: float
 
 
-def optimize_fuel(
+def _greedy_optimize_fuel(
     stops: list[Stop],
     total_miles: float,
     tank_gal: float = 50.0,
@@ -72,10 +72,7 @@ def optimize_fuel(
     start_fuel: float = 0.0,
     origin_radius: float = 25.0,
 ) -> PlanResult:
-    """Compute optimal fuel purchase plan along route.
-
-    Pure-Python greedy algorithm per Section 4.3.
-    """
+    """Compute optimal fuel purchase plan along route using pure greedy algorithm per Section 4.3."""
     if total_miles <= 0:
         return PlanResult(
             total_gallons=0.0,
@@ -282,4 +279,159 @@ def optimize_fuel(
         start_fuel_gallons=start_fuel,
         tank_gallons=tank_gal,
         mpg=mpg,
+    )
+
+
+def consolidate_stops(
+    stops: list[Stop],
+    total_miles: float,
+    tank_gal: float = 50.0,
+    mpg: float = 10.0,
+    start_fuel: float = 0.0,
+    origin_radius: float = 25.0,
+    min_purchase_gallons: float = 10.0,
+    stop_penalty_usd: float = 5.0,
+    cluster_radius_miles: float = 2.0,
+) -> PlanResult:
+    """Consolidate minor/wasteful stops into fewer, larger refueling purchases.
+
+    Iteratively attempts to exclude stops buying less than MIN_PURCHASE_GALLONS
+    (or prunable stops) if the route remains feasible and the total cost increases
+    by less than STOP_PENALTY_USD per eliminated stop.
+    """
+    current_plan = _greedy_optimize_fuel(
+        stops=stops,
+        total_miles=total_miles,
+        tank_gal=tank_gal,
+        mpg=mpg,
+        start_fuel=start_fuel,
+        origin_radius=origin_radius,
+    )
+    if not current_plan.stops:
+        return current_plan
+
+    curr_stops = list(stops)
+
+    while True:
+        # Eligible candidates for consolidation (exclude origin stop if truck starts empty)
+        candidates = [
+            s for s in current_plan.stops if not (start_fuel <= 0.0 and s.mile <= origin_radius)
+        ]
+        # Evaluate small purchases (< min_purchase_gallons) first, sorted ascending by purchase
+        candidates = sorted(
+            candidates,
+            key=lambda s: (s.gallons_purchased >= min_purchase_gallons, s.gallons_purchased),
+        )
+
+        improved = False
+        for ps in candidates:
+            # First try excluding just this station
+            test_stops = [
+                s
+                for s in curr_stops
+                if not (
+                    abs(s.mile - ps.mile) < 1e-4
+                    and abs(s.price - ps.price_per_gallon) < 1e-4
+                    and (ps.ref is None or s.ref == ps.ref)
+                )
+            ]
+            try:
+                cand_plan = _greedy_optimize_fuel(
+                    stops=test_stops,
+                    total_miles=total_miles,
+                    tank_gal=tank_gal,
+                    mpg=mpg,
+                    start_fuel=start_fuel,
+                    origin_radius=origin_radius,
+                )
+            except OptimizerError:
+                continue
+
+            delta_stops = len(current_plan.stops) - len(cand_plan.stops)
+            delta_cost = float(cand_plan.total_cost_usd - current_plan.total_cost_usd)
+
+            # If stop count didn't drop because another station at the same interchange/cluster was picked,
+            # try excluding all stations within the cluster radius.
+            if delta_stops == 0 and any(
+                abs(ns.mile - ps.mile) <= cluster_radius_miles for ns in cand_plan.stops
+            ):
+                test_stops_cluster = [
+                    s for s in curr_stops if abs(s.mile - ps.mile) > cluster_radius_miles
+                ]
+                try:
+                    cand_plan_cluster = _greedy_optimize_fuel(
+                        stops=test_stops_cluster,
+                        total_miles=total_miles,
+                        tank_gal=tank_gal,
+                        mpg=mpg,
+                        start_fuel=start_fuel,
+                        origin_radius=origin_radius,
+                    )
+                    d_stops_cl = len(current_plan.stops) - len(cand_plan_cluster.stops)
+                    d_cost_cl = float(
+                        cand_plan_cluster.total_cost_usd - current_plan.total_cost_usd
+                    )
+                    if d_stops_cl >= 1 and d_cost_cl < stop_penalty_usd * d_stops_cl:
+                        current_plan = cand_plan_cluster
+                        curr_stops = test_stops_cluster
+                        improved = True
+                        break
+                except OptimizerError:
+                    pass
+            elif delta_stops >= 1 and delta_cost < stop_penalty_usd * delta_stops:
+                current_plan = cand_plan
+                curr_stops = test_stops
+                improved = True
+                break
+
+        if not improved:
+            break
+
+    return current_plan
+
+
+def optimize_fuel(
+    stops: list[Stop],
+    total_miles: float,
+    tank_gal: float = 50.0,
+    mpg: float = 10.0,
+    start_fuel: float = 0.0,
+    origin_radius: float = 25.0,
+    optimize_for: str = "practical",
+    min_purchase_gallons: float = 10.0,
+    stop_penalty_usd: float = 5.0,
+) -> PlanResult:
+    """Compute optimal fuel purchase plan along route.
+
+    Args:
+        stops: Candidate fuel stations along route corridor.
+        total_miles: Total route distance in miles.
+        tank_gal: Truck fuel tank capacity in gallons (default: 50.0).
+        mpg: Truck miles per gallon (default: 10.0).
+        start_fuel: Fuel gallons in tank at trip origin (default: 0.0).
+        origin_radius: Radius in miles near origin to search for initial fuel stop.
+        optimize_for: Strategy - "cost" (pure mathematical greedy) or "practical"
+            (consolidates minor stops with configurable penalty). Default is "practical".
+        min_purchase_gallons: Minimum threshold below which a stop is considered minor.
+        stop_penalty_usd: Maximum acceptable cost increase per eliminated stop.
+    """
+    if optimize_for == "cost":
+        return _greedy_optimize_fuel(
+            stops=stops,
+            total_miles=total_miles,
+            tank_gal=tank_gal,
+            mpg=mpg,
+            start_fuel=start_fuel,
+            origin_radius=origin_radius,
+        )
+
+    return consolidate_stops(
+        stops=stops,
+        total_miles=total_miles,
+        tank_gal=tank_gal,
+        mpg=mpg,
+        start_fuel=start_fuel,
+        origin_radius=origin_radius,
+        min_purchase_gallons=min_purchase_gallons,
+        stop_penalty_usd=stop_penalty_usd,
     )

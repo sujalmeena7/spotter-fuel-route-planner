@@ -26,6 +26,12 @@ class RoutePlanInputSerializer(serializers.Serializer):
         default=False,
         help_text="Whether to include all corridor candidate stations for map display",
     )
+    optimize_for = serializers.ChoiceField(
+        choices=["practical", "cost"],
+        default="practical",
+        required=False,
+        help_text="Optimization strategy: 'practical' consolidates short stops; 'cost' gives pure mathematical optimum",
+    )
 
 
 class LocationCoordinateSerializer(serializers.Serializer):

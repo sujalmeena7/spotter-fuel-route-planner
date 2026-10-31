@@ -67,6 +67,7 @@ class RoutePlanService:
         finish_str: str,
         start_fuel: float = 0.0,
         include_candidates: bool = False,
+        optimize_for: str = "practical",
     ) -> dict:
         """Generate full optimal route plan, fuel stops, financials, GeoJSON, and metadata."""
         t_start = time.perf_counter()
@@ -74,12 +75,15 @@ class RoutePlanService:
         # Cache key based on normalized inputs and settings fingerprint
         norm_start = start_str.strip().lower()
         norm_finish = finish_str.strip().lower()
+        norm_opt_for = optimize_for.strip().lower()
         tank_gal = float(getattr(settings, "TANK_GALLONS", 50))
         mpg = float(getattr(settings, "MPG", 10))
         corridor_mi = float(getattr(settings, "CORRIDOR_MILES", 10))
         origin_rad = float(getattr(settings, "ORIGIN_RADIUS_MILES", 25))
+        min_purchase = float(getattr(settings, "MIN_PURCHASE_GALLONS", 10.0))
+        stop_penalty = float(getattr(settings, "STOP_PENALTY_USD", 5.00))
 
-        settings_fp = f"{tank_gal}_{mpg}_{corridor_mi}_{origin_rad}"
+        settings_fp = f"{tank_gal}_{mpg}_{corridor_mi}_{origin_rad}_{min_purchase}_{stop_penalty}_{norm_opt_for}"
         raw_cache_key = (
             f"plan:{norm_start}:{norm_finish}:{start_fuel:.2f}:{include_candidates}:{settings_fp}"
         )
@@ -122,6 +126,9 @@ class RoutePlanService:
             mpg=mpg,
             start_fuel=start_fuel,
             origin_radius=origin_rad,
+            optimize_for=norm_opt_for,
+            min_purchase_gallons=min_purchase,
+            stop_penalty_usd=stop_penalty,
         )
 
         # 5. Financial calculations (baseline & savings)
