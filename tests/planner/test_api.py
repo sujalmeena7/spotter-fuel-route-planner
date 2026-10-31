@@ -31,26 +31,37 @@ def ensure_db_stations_and_clean_cache():
 
 @pytest.fixture
 def mock_ors_route(monkeypatch):
-    """Mocks OpenRouteServiceProvider to return recorded Dallas -> Denver fixture without network."""
-    fixture_path = settings.BASE_DIR / "tests" / "fixtures" / "ors_dallas_denver.json"
-    with open(fixture_path, encoding="utf-8") as f:
-        data = json.load(f)
+    """Mocks OpenRouteServiceProvider to return recorded fixtures without network."""
+    dallas_path = settings.BASE_DIR / "tests" / "fixtures" / "ors_dallas_denver.json"
+    with open(dallas_path, encoding="utf-8") as f:
+        dallas_data = json.load(f)
+    d_feat = dallas_data["features"][0]
+    dallas_route = Route(
+        coordinates=d_feat["geometry"]["coordinates"],
+        distance_m=float(d_feat["properties"]["summary"]["distance"]),
+        duration_s=float(d_feat["properties"]["summary"]["duration"]),
+        provider="openrouteservice",
+    )
 
-    feat = data["features"][0]
-    coords = feat["geometry"]["coordinates"]
-    summary = feat["properties"]["summary"]
-    mock_route = Route(
-        coordinates=coords,
-        distance_m=float(summary["distance"]),
-        duration_s=float(summary["duration"]),
+    houston_path = settings.BASE_DIR / "tests" / "fixtures" / "ors_houston_san_antonio.json"
+    with open(houston_path, encoding="utf-8") as f:
+        houston_data = json.load(f)
+    h_feat = houston_data["features"][0]
+    houston_route = Route(
+        coordinates=h_feat["geometry"]["coordinates"],
+        distance_m=float(h_feat["properties"]["summary"]["distance"]),
+        duration_s=float(h_feat["properties"]["summary"]["duration"]),
         provider="openrouteservice",
     )
 
     def mock_get_route(self, origin, destination):
-        return mock_route
+        lat1, _ = origin
+        if abs(lat1 - 29.78) < 1.0:
+            return houston_route
+        return dallas_route
 
     monkeypatch.setattr(OpenRouteServiceProvider, "get_route", mock_get_route)
-    return mock_route
+    return dallas_route
 
 
 @pytest.mark.django_db
@@ -128,9 +139,11 @@ def test_get_and_post_bodies_are_identical(mock_ors_route):
     for d in (get_data, post_data):
         d["meta"]["compute_ms"] = 0
         d["meta"]["local_compute_ms"] = 0
+        d["meta"]["routing_ms"] = 0
         d["meta"]["total_ms"] = 0
         if "timing" in d["meta"]:
             d["meta"]["timing"]["local_compute_ms"] = 0
+            d["meta"]["timing"]["routing_ms"] = 0
             d["meta"]["timing"]["total_ms"] = 0
 
     assert get_data == post_data
@@ -266,3 +279,19 @@ def test_error_timeout_503(monkeypatch):
     assert resp.status_code == 503
     err = resp.json()["error"]
     assert err["code"] == "routing_timeout"
+
+
+@pytest.mark.django_db
+def test_low_starting_fuel_unreachable_api_both_modes(mock_ors_route):
+    """GET /api/v1/route-plan/ with low starting fuel on Houston -> San Antonio returns 422 unreachable."""
+    client = Client()
+    for fuel in [5.0, 0.5]:
+        for mode in ["cost", "practical"]:
+            resp = client.get(
+                f"/api/v1/route-plan/?start=Houston, TX&finish=San Antonio, TX&start_fuel_gallons={fuel}&optimize_for={mode}"
+            )
+            assert resp.status_code == 422
+            data = resp.json()
+            assert data["error"]["code"] == "unreachable"
+            assert data["error"]["details"]["gap_start_mile"] == 0.0
+            assert data["error"]["details"]["gap_end_mile"] == 105.46

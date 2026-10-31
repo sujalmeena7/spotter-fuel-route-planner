@@ -161,19 +161,19 @@ def _greedy_optimize_fuel(
         ]
 
         # Case 3: Can reach destination within R and no stop in reach is cheaper than current
-        if rem_miles <= r_max + epsilon:
+        # (Only applicable if currently at a real fuel station; virtual origin cannot sell fuel)
+        if current_idx >= 0 and rem_miles <= r_max + epsilon:
             has_cheaper = any(
                 sorted_stops[j].price < current_price - epsilon for j in reach_indices
             )
             if not has_cheaper:
                 gallons_needed = max(0.0, (rem_miles / mpg) - current_fuel)
-                if current_idx >= 0:
-                    record = purchases.setdefault(
-                        current_idx,
-                        {"purchased": 0.0, "arrival": current_fuel, "departure": current_fuel},
-                    )
-                    record["purchased"] += gallons_needed
-                    record["departure"] += gallons_needed
+                record = purchases.setdefault(
+                    current_idx,
+                    {"purchased": 0.0, "arrival": current_fuel, "departure": current_fuel},
+                )
+                record["purchased"] += gallons_needed
+                record["departure"] += gallons_needed
                 break
 
         # Case 4: There is a cheaper stop in reach -> travel to the NEAREST such stop
@@ -263,7 +263,7 @@ def _greedy_optimize_fuel(
                     mile=round(st.mile, 2),
                     price_per_gallon=round(st.price, 3),
                     price_decimal=price_dec,
-                    gallons_purchased=round(bought, 2),
+                    gallons_purchased=round(bought, 4),
                     cost_usd=stop_cost,
                     fuel_on_arrival_gallons=round(p["arrival"], 2),
                     fuel_on_departure_gallons=round(p["departure"], 2),
@@ -273,7 +273,7 @@ def _greedy_optimize_fuel(
             seq += 1
 
     return PlanResult(
-        total_gallons=round(total_gallons, 2),
+        total_gallons=round(total_gallons, 4),
         total_cost_usd=total_cost,
         stops=planned_stops,
         start_fuel_gallons=start_fuel,

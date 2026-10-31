@@ -145,6 +145,50 @@ def test_optimizer_invariants():
     assert abs(fuel_at_finish) < 1e-4
 
 
+def test_optimizer_invariant_fuel_purchased_plus_start_fuel():
+    """For every successful plan, total_gallons_purchased + start_fuel >= distance/mpg - 1e-6."""
+    stops = [
+        Stop(mile=10.0, price=3.20),
+        Stop(mile=200.0, price=3.00),
+        Stop(mile=450.0, price=3.50),
+        Stop(mile=700.0, price=2.80),
+    ]
+    for dist in [150.0, 300.0, 500.0, 850.0]:
+        for start_fuel in [0.0, 5.0, 15.0, 30.0, 50.0]:
+            for mode in ["cost", "practical"]:
+                res = optimize_fuel(
+                    stops,
+                    total_miles=dist,
+                    tank_gal=50.0,
+                    mpg=10.0,
+                    start_fuel=start_fuel,
+                    optimize_for=mode,
+                )
+                assert res.total_gallons + start_fuel >= (dist / 10.0) - 1e-6
+
+
+def test_low_starting_fuel_unreachable_both_modes():
+    """Verify low starting fuel where no station is reachable raises Unreachable in both cost and practical modes."""
+    stops = [
+        Stop(mile=105.46, price=3.199),
+        Stop(mile=128.85, price=2.799),
+    ]
+    total_miles = 197.03
+    for fuel in [0.5, 5.0]:
+        for mode in ["cost", "practical"]:
+            with pytest.raises(Unreachable) as exc_info:
+                optimize_fuel(
+                    stops=stops,
+                    total_miles=total_miles,
+                    tank_gal=50.0,
+                    mpg=10.0,
+                    start_fuel=fuel,
+                    optimize_for=mode,
+                )
+            assert exc_info.value.gap_start_mile == 0.0
+            assert exc_info.value.gap_end_mile == 105.46
+
+
 def test_dp_cross_check_200_seeded_cases():
     """Verify greedy optimizer strictly matches DP reference solver on 200 seeded random instances."""
     random.seed(98765)

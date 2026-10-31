@@ -178,7 +178,7 @@ class RoutePlanService:
             "finish": {"label": dest.label, "lat": dest.lat, "lon": dest.lon},
             "distance_miles": route.distance_miles,
             "duration_hours": route.duration_hours,
-            "total_gallons": round(total_gallons, 2),
+            "total_gallons": round(total_gallons, 4),
             "total_fuel_cost_usd": f"{total_cost_usd_dec:.2f}",
             "avg_price_per_gallon": f"{avg_price_gal_dec:.3f}",
             "cost_per_mile_usd": f"{cost_per_mile_dec:.3f}",
