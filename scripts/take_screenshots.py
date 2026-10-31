@@ -18,14 +18,25 @@ OUTPUT_DIR = Path("docs/screenshots")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def ensure_server_running():
-    try:
-        resp = urllib.request.urlopen(f"{BASE_URL}healthz", timeout=1)
-        if resp.status == 200:
-            print(f"Server is already running on port {PORT}.")
-            return None
-    except Exception:
-        pass
+def ensure_server_running(force_fresh=False):
+    if force_fresh:
+        # Check if anything is running and terminate it if so
+        try:
+            resp = urllib.request.urlopen(f"{BASE_URL}healthz", timeout=1)
+            if resp.status == 200:
+                print("Stopping existing server to ensure fresh cold state...")
+                # Kill existing python processes listening on PORT
+                subprocess.run(
+                    [
+                        "powershell",
+                        "-Command",
+                        f"Get-NetTCPConnection -LocalPort {PORT} -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}",
+                    ],
+                    check=False,
+                )
+                time.sleep(1.0)
+        except Exception:
+            pass
 
     print(f"Starting server on port {PORT}...")
     server = subprocess.Popen(
@@ -63,7 +74,18 @@ def get_driver(width, height, is_mobile=False):
                 ),
             },
         )
-    return webdriver.Chrome(options=opts)
+    driver = webdriver.Chrome(options=opts)
+    # Ensure viewport matches exact dimensions via Chrome DevTools Protocol
+    driver.execute_cdp_cmd(
+        "Emulation.setDeviceMetricsOverride",
+        {
+            "width": width,
+            "height": height,
+            "deviceScaleFactor": 2.0 if is_mobile else 1.0,
+            "mobile": is_mobile,
+        },
+    )
+    return driver
 
 
 def check_console_errors(driver, context_name):
@@ -85,10 +107,92 @@ def check_console_errors(driver, context_name):
 
 
 def main():
-    server = ensure_server_running()
+    server = ensure_server_running(force_fresh=True)
     try:
-        # 1. Desktop Light (1440x900): New York -> Los Angeles, practical mode
-        print("\n--- Capturing desktop_light.png (1440x900) ---")
+        # 1. Mobile Half Snap (390x844 @2x): Dallas -> Denver on COLD server
+        print("\n--- Capturing mobile.png (390x844 @2x, cold request) ---")
+        driver = get_driver(390, 844, is_mobile=True)
+        try:
+            driver.get(BASE_URL)
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".example-chip"))
+            )
+
+            chips = driver.find_elements(By.CSS_SELECTOR, ".example-chip")
+            for c in chips:
+                if "Dallas" in c.text:
+                    c.click()
+                    break
+
+            WebDriverWait(driver, 20).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, ".hero-cost"))
+            )
+
+            time.sleep(3.5)
+
+            # Verify price legend is cleanly hidden at half snap on mobile
+            legend_display = driver.execute_script(
+                "return window.getComputedStyle(document.querySelector('.price-legend-box')).display;"
+            )
+            print("Mobile half-snap price legend display:", legend_display)
+            assert legend_display == "none", (
+                f"Expected price-legend-box to be hidden, got {legend_display}"
+            )
+
+            check_console_errors(driver, "mobile")
+            mobile_path = OUTPUT_DIR / "mobile.png"
+            driver.save_screenshot(str(mobile_path))
+            print("Successfully saved mobile.png (390x844 @2x, cold)")
+        finally:
+            driver.quit()
+
+        # 2. Desktop Dark (1440x900): Dallas -> Denver, candidates toggled ON
+        print("\n--- Capturing desktop_dark.png (1440x900 viewport) ---")
+        driver = get_driver(1440, 900)
+        try:
+            driver.get(f"{BASE_URL}?theme=dark")
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".example-chip"))
+            )
+
+            # Click Dallas -> Denver chip
+            chips = driver.find_elements(By.CSS_SELECTOR, ".example-chip")
+            dallas_chip = None
+            for c in chips:
+                if "Dallas" in c.text:
+                    dallas_chip = c
+                    break
+            if dallas_chip:
+                dallas_chip.click()
+            else:
+                chips[1].click()
+
+            WebDriverWait(driver, 20).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, ".hero-cost"))
+            )
+
+            # Toggle corridor stations ON
+            btn_corridor = driver.find_element(By.ID, "btn-corridor-toggle")
+            btn_corridor.click()
+
+            time.sleep(4.0)
+
+            # Verify corridor candidate layer is visible
+            cand_visibility = driver.execute_script(
+                "return window.mapInstance.getLayoutProperty('corridor-candidates-layer', 'visibility');"
+            )
+            print("Corridor candidate visibility:", cand_visibility)
+            assert cand_visibility == "visible", "Expected corridor-candidates-layer to be visible"
+
+            check_console_errors(driver, "desktop_dark")
+            dark_path = OUTPUT_DIR / "desktop_dark.png"
+            driver.save_screenshot(str(dark_path))
+            print("Successfully saved desktop_dark.png (1440x900)")
+        finally:
+            driver.quit()
+
+        # 3. Desktop Light (1440x900): New York -> Los Angeles, practical mode
+        print("\n--- Capturing desktop_light.png (1440x900 viewport) ---")
         driver = get_driver(1440, 900)
         try:
             driver.get(f"{BASE_URL}?theme=light")
@@ -130,93 +234,13 @@ def main():
             assert hero_cost.is_displayed(), "Expected hero-cost KPI to be visible"
 
             check_console_errors(driver, "desktop_light")
-            driver.save_screenshot(str(OUTPUT_DIR / "desktop_light.png"))
+            light_path = OUTPUT_DIR / "desktop_light.png"
+            driver.save_screenshot(str(light_path))
             print("Successfully saved desktop_light.png (1440x900)")
         finally:
             driver.quit()
 
-        # 2. Desktop Dark (1440x900): Dallas -> Denver, candidates toggled ON
-        print("\n--- Capturing desktop_dark.png (1440x900) ---")
-        driver = get_driver(1440, 900)
-        try:
-            driver.get(f"{BASE_URL}?theme=dark")
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".example-chip"))
-            )
-
-            # Click Dallas -> Denver chip
-            chips = driver.find_elements(By.CSS_SELECTOR, ".example-chip")
-            dallas_chip = None
-            for c in chips:
-                if "Dallas" in c.text:
-                    dallas_chip = c
-                    break
-            if dallas_chip:
-                dallas_chip.click()
-            else:
-                chips[1].click()
-
-            WebDriverWait(driver, 20).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, ".hero-cost"))
-            )
-
-            # Toggle corridor stations ON
-            btn_corridor = driver.find_element(By.ID, "btn-corridor-toggle")
-            btn_corridor.click()
-
-            time.sleep(4.0)
-
-            # Verify corridor candidate layer is visible
-            cand_visibility = driver.execute_script(
-                "return window.mapInstance.getLayoutProperty('corridor-candidates-layer', 'visibility');"
-            )
-            print("Corridor candidate visibility:", cand_visibility)
-            assert cand_visibility == "visible", "Expected corridor-candidates-layer to be visible"
-
-            check_console_errors(driver, "desktop_dark")
-            driver.save_screenshot(str(OUTPUT_DIR / "desktop_dark.png"))
-            print("Successfully saved desktop_dark.png (1440x900)")
-        finally:
-            driver.quit()
-
-        # 3. Mobile Half Snap (390x844 @2x): Dallas -> Denver, half snap, legend hidden
-        print("\n--- Capturing mobile_half_snap.png (390x844 @2x) ---")
-        driver = get_driver(390, 844, is_mobile=True)
-        try:
-            driver.get(BASE_URL)
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".example-chip"))
-            )
-
-            chips = driver.find_elements(By.CSS_SELECTOR, ".example-chip")
-            for c in chips:
-                if "Dallas" in c.text:
-                    c.click()
-                    break
-
-            WebDriverWait(driver, 20).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, ".hero-cost"))
-            )
-
-            time.sleep(3.0)
-
-            # Verify price legend is cleanly hidden at half snap on mobile
-            legend_display = driver.execute_script(
-                "return window.getComputedStyle(document.querySelector('.price-legend-box')).display;"
-            )
-            print("Mobile half-snap price legend display:", legend_display)
-            assert legend_display == "none", (
-                f"Expected price-legend-box to be hidden, got {legend_display}"
-            )
-
-            check_console_errors(driver, "mobile_half_snap")
-            driver.save_screenshot(str(OUTPUT_DIR / "mobile_half_snap.png"))
-            driver.save_screenshot(str(OUTPUT_DIR / "mobile.png"))
-            print("Successfully saved mobile_half_snap.png (390x844 @2x)")
-        finally:
-            driver.quit()
-
-        print("\nAll 3 screenshots captured and validated with 0 severe console errors!")
+        print("\nAll screenshots captured and validated with 0 severe console errors!")
     finally:
         if server:
             server.terminate()
