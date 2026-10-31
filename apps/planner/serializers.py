@@ -80,11 +80,21 @@ class CandidateStationSerializer(serializers.Serializer):
     mile_marker = serializers.FloatField()
 
 
+class TimingSerializer(serializers.Serializer):
+    routing_ms = serializers.IntegerField()
+    local_compute_ms = serializers.IntegerField()
+    total_ms = serializers.IntegerField()
+
+
 class RoutePlanMetaSerializer(serializers.Serializer):
     routing_provider = serializers.CharField()
     external_api_calls = serializers.IntegerField()
     cache_hit = serializers.BooleanField()
     compute_ms = serializers.IntegerField()
+    routing_ms = serializers.IntegerField(required=False)
+    local_compute_ms = serializers.IntegerField(required=False)
+    total_ms = serializers.IntegerField(required=False)
+    timing = TimingSerializer(required=False)
     assumptions = serializers.ListField(child=serializers.CharField())
 
 

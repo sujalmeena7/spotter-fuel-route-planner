@@ -133,10 +133,13 @@ export function setupPanel({
 
         // Performance badge
         if (meta) {
+            const localMs = meta.local_compute_ms ?? (meta.timing ? meta.timing.local_compute_ms : meta.compute_ms) ?? 0;
+            const routingMs = meta.routing_ms ?? (meta.timing ? meta.timing.routing_ms : 0) ?? 0;
+            const calls = meta.external_api_calls ?? 0;
             const callsText = meta.cache_hit
-                ? 'cached'
-                : `${meta.external_api_calls} routing call${meta.external_api_calls === 1 ? '' : 's'}`;
-            perfBadge.textContent = `⚡ ${meta.compute_ms} ms · ${callsText}`;
+                ? 'cached · 0 calls'
+                : `${calls} call${calls === 1 ? '' : 's'}`;
+            perfBadge.textContent = `⚡ ${localMs} ms compute · ${routingMs} ms routing · ${callsText}`;
             perfBadge.style.display = 'inline-flex';
         }
 

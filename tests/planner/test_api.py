@@ -68,6 +68,13 @@ def test_cold_and_warm_request_call_counts(mock_ors_route):
     assert data_cold["meta"]["external_api_calls"] == 1
     assert data_cold["meta"]["cache_hit"] is False
     assert "X-Response-Time-ms" in resp_cold.headers
+    assert "routing_ms" in data_cold["meta"]
+    assert "local_compute_ms" in data_cold["meta"]
+    assert "total_ms" in data_cold["meta"]
+    assert "timing" in data_cold["meta"]
+    assert "routing_ms" in data_cold["meta"]["timing"]
+    assert "local_compute_ms" in data_cold["meta"]["timing"]
+    assert "total_ms" in data_cold["meta"]["timing"]
 
     # 2. Warm request
     resp_warm = client.get(
@@ -117,9 +124,14 @@ def test_get_and_post_bodies_are_identical(mock_ors_route):
     get_data = get_resp.json()
     post_data = post_resp.json()
 
-    # Strip compute_ms as microsecond timing can vary
-    get_data["meta"]["compute_ms"] = 0
-    post_data["meta"]["compute_ms"] = 0
+    # Strip timing fields as microsecond timing can vary
+    for d in (get_data, post_data):
+        d["meta"]["compute_ms"] = 0
+        d["meta"]["local_compute_ms"] = 0
+        d["meta"]["total_ms"] = 0
+        if "timing" in d["meta"]:
+            d["meta"]["timing"]["local_compute_ms"] = 0
+            d["meta"]["timing"]["total_ms"] = 0
 
     assert get_data == post_data
 

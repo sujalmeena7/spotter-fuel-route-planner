@@ -99,6 +99,14 @@ class RoutePlanService:
             payload["meta"]["cache_hit"] = True
             payload["meta"]["external_api_calls"] = 0
             payload["meta"]["compute_ms"] = elapsed_ms
+            payload["meta"]["local_compute_ms"] = elapsed_ms
+            payload["meta"]["routing_ms"] = 0
+            payload["meta"]["total_ms"] = elapsed_ms
+            payload["meta"]["timing"] = {
+                "routing_ms": 0,
+                "local_compute_ms": elapsed_ms,
+                "total_ms": elapsed_ms,
+            }
             return payload
 
         # Cold request: reset call counter
@@ -109,8 +117,10 @@ class RoutePlanService:
         dest = LocationResolver.resolve(finish_str)
 
         # 2. Routing call
+        t_route_start = time.perf_counter()
         provider = get_routing_provider()
         route = provider.get_route((origin.lat, origin.lon), (dest.lat, dest.lon))
+        t_routing = (time.perf_counter() - t_route_start) * 1000
 
         # 3. Corridor stations
         corridor_stations = find_corridor_stations(route, corridor_miles=corridor_mi)
@@ -258,13 +268,24 @@ class RoutePlanService:
 
         # 10. Metadata
         total_external_calls = get_call_count() + origin.external_calls + dest.external_calls
-        elapsed_ms = int(round((time.perf_counter() - t_start) * 1000))
+        t_total = (time.perf_counter() - t_start) * 1000
+        routing_ms = int(round(t_routing))
+        total_ms = int(round(t_total))
+        local_compute_ms = max(0, total_ms - routing_ms)
 
         meta = {
             "routing_provider": route.provider,
             "external_api_calls": total_external_calls,
             "cache_hit": False,
-            "compute_ms": elapsed_ms,
+            "compute_ms": local_compute_ms,
+            "routing_ms": routing_ms,
+            "local_compute_ms": local_compute_ms,
+            "total_ms": total_ms,
+            "timing": {
+                "routing_ms": routing_ms,
+                "local_compute_ms": local_compute_ms,
+                "total_ms": total_ms,
+            },
             "assumptions": [
                 f"Tank {int(tank_gal)} gal, {int(mpg)} MPG",
                 "Lowest listed price per station",
