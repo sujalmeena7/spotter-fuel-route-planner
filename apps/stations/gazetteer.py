@@ -3,6 +3,7 @@
 import csv
 import re
 import threading
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -38,12 +39,13 @@ def is_within_usa(lat: float, lon: float) -> bool:
 def normalize_city_name(name: str) -> str:
     """Normalize a city/place name for gazetteer lookup.
 
-    Expands common abbreviations (st, ft, mt, mc), strips suffixes
-    (city, town, cdp, etc.), replaces hyphens with spaces, removes punctuation.
+    Expands common abbreviations (st, ft, mt, mc), replaces hyphens with spaces,
+    removes punctuation, collapses whitespace. Preserves multi-word city names.
     """
     if not name:
         return ""
-    s = name.lower().strip()
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    s = s.lower().strip()
     # Replace hyphens and slashes with space
     s = re.sub(r"[-/]", " ", s)
     # Expand cardinal directions at start if followed by word
@@ -59,14 +61,15 @@ def normalize_city_name(name: str) -> str:
     s = re.sub(r"\bmc\s+", "mc", s)
     # Remove non-alphanumeric except space
     s = re.sub(r"[^a-z0-9\s]", "", s)
-    # Strip suffixes up to 3 times from the end
-    for _ in range(3):
-        s = SUFFIX_PATTERN.sub("", s).strip()
     return " ".join(s.split())
 
 
 CITY_ALIASES = {
     ("honolulu", "HI"): "urban honolulu",
+    ("boise", "ID"): "boise city",
+    ("amite", "LA"): "amite city",
+    ("moapa", "NV"): "moapa town",
+    ("bridgewater", "MA"): "bridgewater town",
 }
 
 
@@ -117,38 +120,29 @@ class GazetteerIndex:
                 aland = int(float(row.get("aland", 0)))
                 kind = row.get("kind", "place")
 
-                norm_key = (normalize_city_name(name), state)
-                raw_norm_key = (
-                    " ".join(re.sub(r"[^a-z0-9\s]", "", name.lower()).split()),
-                    state,
-                )
+                s_name = re.sub(r"\s*\(balance\)\s*$", "", name, flags=re.IGNORECASE).strip()
+                clean_name = SUFFIX_PATTERN.sub("", s_name).strip()
+                norm_clean = normalize_city_name(clean_name)
+                norm_raw = normalize_city_name(name)
+
+                target_dict = self.places if kind == "place" else self.cousubs
+                for norm_key in ((norm_clean, state), (norm_raw, state)):
+                    if norm_key not in target_dict or aland > target_dict[norm_key][2]:
+                        target_dict[norm_key] = (lat, lon, aland)
 
                 if kind == "place":
-                    # Store both normalized and raw normalized keys
-                    if norm_key not in self.places or aland > self.places[norm_key][2]:
-                        self.places[norm_key] = (lat, lon, aland)
-                    if raw_norm_key not in self.places or aland > self.places[raw_norm_key][2]:
-                        self.places[raw_norm_key] = (lat, lon, aland)
-
-                    # For autocomplete, clean trailing entity designators
-                    clean_display_name = SUFFIX_PATTERN.sub("", name).strip()
-                    display_label = f"{clean_display_name}, {state}"
+                    display_label = f"{clean_name}, {state}"
                     self.autocomplete_records.append(
                         {
                             "label": display_label,
-                            "city": clean_display_name,
-                            "norm_city": normalize_city_name(clean_display_name),
+                            "city": clean_name,
+                            "norm_city": norm_clean,
                             "state": state,
                             "lat": round(lat, 5),
                             "lon": round(lon, 5),
                             "aland": aland,
                         }
                     )
-                else:  # cousub
-                    if norm_key not in self.cousubs or aland > self.cousubs[norm_key][2]:
-                        self.cousubs[norm_key] = (lat, lon, aland)
-                    if raw_norm_key not in self.cousubs or aland > self.cousubs[raw_norm_key][2]:
-                        self.cousubs[raw_norm_key] = (lat, lon, aland)
 
         self._loaded = True
 
@@ -160,18 +154,25 @@ class GazetteerIndex:
         if not self._loaded:
             self.load()
 
-        norm_c = normalize_city_name(city)
         st_u = state.upper().strip()
+        norm_c = normalize_city_name(city)
         norm_c = CITY_ALIASES.get((norm_c, st_u), norm_c)
-        norm_k = (norm_c, st_u)
-        if norm_k in self.places:
-            lat, lon, _ = self.places[norm_k]
-            if is_within_usa(lat, lon):
-                return lat, lon, "gazetteer_place"
-        if norm_k in self.cousubs:
-            lat, lon, _ = self.cousubs[norm_k]
-            if is_within_usa(lat, lon):
-                return lat, lon, "gazetteer_cousub"
+        clean_c = normalize_city_name(SUFFIX_PATTERN.sub("", city).strip())
+
+        # 1. Places: direct normalized match, then suffix-stripped
+        for k in ((norm_c, st_u), (clean_c, st_u)):
+            if k in self.places:
+                lat, lon, _ = self.places[k]
+                if is_within_usa(lat, lon):
+                    return lat, lon, "gazetteer_place"
+
+        # 2. Cousubs: direct normalized match, then suffix-stripped
+        for k in ((norm_c, st_u), (clean_c, st_u)):
+            if k in self.cousubs:
+                lat, lon, _ = self.cousubs[k]
+                if is_within_usa(lat, lon):
+                    return lat, lon, "gazetteer_cousub"
+
         return None
 
     def search_autocomplete(self, query: str, limit: int = 8) -> list[dict[str, Any]]:

@@ -30,7 +30,7 @@ def block_external_sockets(monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def ensure_db_stations_and_clean_cache():
     cache.clear()
     if not Station.objects.filter(lat__isnull=False).exists():
@@ -42,7 +42,7 @@ def ensure_db_stations_and_clean_cache():
 
 
 @pytest.fixture
-def mock_ors_route(monkeypatch):
+def mock_ors_route(monkeypatch, ensure_db_stations_and_clean_cache):
     """Mocks OpenRouteServiceProvider to return recorded fixtures without network."""
     dallas_path = settings.BASE_DIR / "tests" / "fixtures" / "ors_dallas_denver.json"
     with open(dallas_path, encoding="utf-8") as f:

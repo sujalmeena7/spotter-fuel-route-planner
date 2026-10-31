@@ -12,16 +12,18 @@ from apps.stations.models import GeocodeSource, Station
 
 
 def test_city_normalization():
-    """Verify city name normalization handles suffixes, abbreviations, casing, and spacing."""
+    """Verify city name normalization handles abbreviations, casing, accents, and spacing."""
     assert normalize_city_name("MC DERMITT") == "mcdermitt"
     assert normalize_city_name("St. Louis") == "saint louis"
     assert normalize_city_name("New Castle                              ") == "new castle"
     assert normalize_city_name("Ft. Wayne") == "fort wayne"
     assert normalize_city_name("Mt. Vernon") == "mount vernon"
-    assert normalize_city_name("Dallas city") == "dallas"
-    assert normalize_city_name("Abbeville city") == "abbeville"
-    assert normalize_city_name("Boise City city") == "boise"
+    assert normalize_city_name("Dallas") == "dallas"
+    assert normalize_city_name("Abbeville") == "abbeville"
+    assert normalize_city_name("Boise City") == "boise city"
+    assert normalize_city_name("Lake Village") == "lake village"
     assert normalize_city_name("Winston-Salem") == "winston salem"
+    assert normalize_city_name("Cañon City") == "canon city"
 
 
 def test_gazetteer_lookup_plausible_coordinates():
@@ -45,6 +47,18 @@ def test_gazetteer_lookup_plausible_coordinates():
     lat_den, lon_den, _ = res_denver
     assert 39.6 <= lat_den <= 39.9
     assert -105.1 <= lon_den <= -104.8
+
+    res_lv = idx.lookup("Lake Village", "AR")
+    assert res_lv is not None
+    lat_lv, lon_lv, _ = res_lv
+    assert 33.2 <= lat_lv <= 33.4
+    assert -91.4 <= lon_lv <= -91.2
+
+    res_lc = idx.lookup("Lake City", "AR")
+    assert res_lc is not None
+    lat_lc, lon_lc, _ = res_lc
+    assert 35.7 <= lat_lc <= 35.9
+    assert -90.5 <= lon_lc <= -90.4
 
 
 def test_cousub_parser_header_mapping():
@@ -179,3 +193,57 @@ def test_load_stations_zero_null_coordinates_in_db():
 
     outside = [s.opis_id for s in stations if not is_within_usa(s.lat, s.lon)]
     assert len(outside) == 0, f"Found stations outside US bounds: {outside}"
+
+
+@pytest.mark.django_db
+def test_all_checkable_stations_within_25_miles_of_city_centroid(ensure_db_stations_and_clean_cache):
+    """Verify all checkable stations in data/stations_geocoded.csv are within 25 mi of city centroid."""
+    import math
+
+    def haversine(lat1, lon1, lat2, lon2):
+        R = 3958.8
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    idx = GazetteerIndex.get_instance()
+
+    raw_cities = {}
+    fuel_csv = settings.BASE_DIR / "data" / "fuel-prices-for-be-assessment.csv"
+    with open(fuel_csv, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            raw_cities[row["OPIS Truckstop ID"]] = (
+                row["City"].strip(),
+                row["State"].strip().upper(),
+            )
+
+    geocoded_csv = settings.BASE_DIR / "data" / "stations_geocoded.csv"
+    checked_count = 0
+    with open(geocoded_csv, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if not row["lat"] or not row["lon"]:
+                continue
+            sid = row["opis_id"]
+            lat = float(row["lat"])
+            lon = float(row["lon"])
+            city, state = raw_cities.get(sid, ("", ""))
+            res = idx.lookup(city, state)
+            if res:
+                checked_count += 1
+                c_lat, c_lon, _ = res
+                dist = haversine(lat, lon, c_lat, c_lon)
+                assert dist <= 25.0, (
+                    f"Station #{sid} ({city}, {state}) at ({lat}, {lon}) is {dist:.1f} mi "
+                    f"from gazetteer centroid ({c_lat}, {c_lon}) (> 25 mi)"
+                )
+
+    assert checked_count > 6000, f"Expected > 6000 checkable stations, got {checked_count}"
+
+    # Specifically verify station #70495 in Lake Village, AR
+    s70495 = Station.objects.get(opis_id=70495)
+    assert s70495.city == "Lake Village"
+    assert s70495.state == "AR"
+    assert 33.2 <= s70495.lat <= 33.4
+    assert -91.4 <= s70495.lon <= -91.2

@@ -2227,7 +2227,7 @@ opis_id,lat,lon,geocode_source
 64671,44.300256,-90.836888,gazetteer_place
 64672,39.843221,-85.42603,gazetteer_place
 64673,41.537547,-86.904942,gazetteer_place
-64674,41.675183,-71.924707,gazetteer_place
+64674,41.693613,-71.900776,gazetteer_cousub
 64675,38.947306,-91.935419,gazetteer_place
 64676,35.467079,-97.513657,gazetteer_place
 64677,37.357071,-84.332869,gazetteer_place
@@ -2309,7 +2309,7 @@ opis_id,lat,lon,geocode_source
 64946,41.437398,-85.051661,gazetteer_place
 64949,37.925873,-95.398539,gazetteer_place
 64950,39.851661,-95.537789,gazetteer_place
-64952,37.570442,-101.744783,gazetteer_place
+64952,38.341083,-100.138413,gazetteer_cousub
 64961,39.761734,-95.634011,gazetteer_place
 64963,38.395431,-96.536666,gazetteer_place
 64964,37.482179,-100.846563,gazetteer_place
@@ -3118,7 +3118,7 @@ opis_id,lat,lon,geocode_source
 67185,44.455645,-93.170311,gazetteer_place
 67186,43.644789,-94.464015,gazetteer_place
 67192,44.014299,-92.478592,gazetteer_place
-67193,43.804587,-91.785578,gazetteer_place
+67193,43.813437,-91.753828,gazetteer_place
 67195,43.643087,-94.10183,gazetteer_place
 67196,43.98831,-92.232124,gazetteer_place
 67200,44.753615,-90.298465,gazetteer_place
@@ -4743,7 +4743,7 @@ opis_id,lat,lon,geocode_source
 70492,44.961766,-89.646538,gazetteer_place
 70493,34.781368,-91.558058,gazetteer_place
 70494,39.882792,-104.794908,gazetteer_place
-70495,35.81937,-90.453905,gazetteer_place
+70495,33.32918,-91.284794,gazetteer_place
 70496,44.349336,-87.831198,gazetteer_place
 70498,44.959474,-90.947958,gazetteer_place
 70500,33.561901,-101.888883,gazetteer_place
@@ -6271,7 +6271,7 @@ opis_id,lat,lon,geocode_source
 72645,32.465842,-111.134697,gazetteer_place
 72646,32.733338,-101.953773,gazetteer_place
 72647,32.499936,-87.826922,gazetteer_place
-72648,38.442251,-105.23488,nominatim
+72648,38.441886,-105.220899,gazetteer_place
 72649,41.979455,-114.664598,gazetteer_place
 72650,28.436376,-99.236711,gazetteer_place
 72651,32.124437,-81.30775,gazetteer_place

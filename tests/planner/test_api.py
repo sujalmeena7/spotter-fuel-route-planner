@@ -14,6 +14,11 @@ from apps.routing.exceptions import (
 from apps.routing.providers import OpenRouteServiceProvider
 
 
+@pytest.fixture(autouse=True)
+def ensure_planner_api_db(ensure_db_stations_and_clean_cache):
+    pass
+
+
 @pytest.mark.django_db
 def test_cold_and_warm_request_call_counts(mock_ors_route):
     """A cold request makes exactly 1 external routing call; warm request makes 0 calls."""
