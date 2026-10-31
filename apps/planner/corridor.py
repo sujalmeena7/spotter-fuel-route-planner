@@ -84,7 +84,22 @@ def find_corridor_stations(
     cand_unit_vectors = idx.unit_vectors[cand_indices]
 
     # 2. Build cKDTree on route 3D unit vectors
-    route_unit_vectors = lat_lon_to_unit_vectors(route_lats, route_lons)
+    # When route has over 4000 vertices (e.g. cross-country routes with 35k+ raw vertices),
+    # sample vertices to ~4000 points while keeping accuracy well within 0.1 miles.
+    if len(route_arr) > 4000:
+        step = max(1, int(len(route_arr) / 4000))
+        sample_indices = np.arange(0, len(route_arr), step)
+        if sample_indices[-1] != len(route_arr) - 1:
+            sample_indices = np.append(sample_indices, len(route_arr) - 1)
+        tree_lats = route_lats[sample_indices]
+        tree_lons = route_lons[sample_indices]
+        tree_cum = cum_miles[sample_indices]
+    else:
+        tree_lats = route_lats
+        tree_lons = route_lons
+        tree_cum = cum_miles
+
+    route_unit_vectors = lat_lon_to_unit_vectors(tree_lats, tree_lons)
     tree = cKDTree(route_unit_vectors)
 
     # 3. Query nearest route vertex for each candidate
@@ -102,7 +117,7 @@ def find_corridor_stations(
     for rel_idx in within_corridor:
         orig_idx = cand_indices[rel_idx]
         v_idx = nearest_vertices[rel_idx]
-        marker = round(float(cum_miles[v_idx]), 2)
+        marker = round(float(tree_cum[v_idx]), 2)
         off_route = round(float(dist_miles[rel_idx]), 2)
 
         results.append(
