@@ -212,7 +212,7 @@ Run it yourself with `python manage.py benchmark_routes --mock`. Results for 6 n
 ## 📡 API Reference
 
 ### 1. Plan Fuel Route
-`GET /api/v1/route-plan/?start={origin}&finish={dest}&start_fuel={gal}&optimize_for={practical|cost}&include_candidates={bool}`  
+`GET /api/v1/route-plan/?start={origin}&finish={dest}&start_fuel_gallons={gal}&optimize_for={practical|cost}&include_candidates={bool}`  
 `POST /api/v1/route-plan/`
 
 #### Query / Body Parameters:
