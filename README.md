@@ -63,14 +63,25 @@ docker compose up --build
 The service processes a route request through a 5-stage deterministic pipeline:
 
 ```mermaid
-flowchart TD
-    A["Client Request<br/>GET or POST /api/v1/route-plan/"] --> B["1. Location Resolver<br/>US Census Gazetteer index"]
-    B -->|"0 external calls"| C["2. Cached Routing Provider<br/>OpenRouteService or OSRM"]
-    C -->|"1 call cold, 0 calls warm"| D["3. Corridor Matching<br/>cKDTree on a 3D unit sphere"]
-    D -->|"stations within 10 mi of the route"| E["4. Fuel Optimizer<br/>pure Python, greedy"]
-    E -->|"stops, gallons, cost"| F["5. Serializer and Response Cache<br/>GeoJSON, KPIs, fuel profile"]
-    F --> G["JSON Response and MapLibre UI"]
+flowchart LR
+    A(["Client<br/>request"]) --> B["1. Resolve<br/>Census index<br/>0 API calls"]
+    B --> C["2. Route<br/>ORS or OSRM<br/>1 call, cached"]
+    C --> D["3. Match<br/>cKDTree search<br/>10 mi corridor"]
+    D --> E["4. Optimize<br/>greedy solver<br/>DP-checked"]
+    E --> F["5. Respond<br/>GeoJSON + KPIs<br/>cached 1 h"]
+
+    classDef client fill:#475569,stroke:#334155,color:#fff
+    classDef offline fill:#16a34a,stroke:#15803d,color:#fff
+    classDef network fill:#d97706,stroke:#b45309,color:#fff
+    classDef compute fill:#2563eb,stroke:#1d4ed8,color:#fff
+    class A client
+    class B offline
+    class C network
+    class D,E,F compute
+    linkStyle default stroke:#94a3b8,stroke-width:2px
 ```
+
+<sub>Green = fully offline. Amber = the only external call (skipped on cache hits). Blue = local compute. Entry point: `GET` or `POST /api/v1/route-plan/`.</sub>
 
 1. **Location Resolution**: Resolves coordinates, `City, ST`, or state names using an in-memory Census Gazetteer index (68,744 places). **0 external API calls**.
 2. **Routing Provider**: Fetches the route polyline with a single call: OpenRouteService with the truck profile (`driving-hgv`) when `ORS_API_KEY` is set, otherwise the public OSRM server (car profile). Responses are cached for 24 hours.
