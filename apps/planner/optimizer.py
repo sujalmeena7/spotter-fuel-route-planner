@@ -1,7 +1,10 @@
 """Pure-Python fuel optimizer for long-haul trucking (no Django imports).
 
-Implements Section 4.3 greedy refueling algorithm with configurable tank, MPG,
-origin approach logic, and practical stop consolidation.
+Greedy refueling along a fixed route: at each stop, buy only enough fuel to reach
+the next cheaper station within range, or fill the tank when nothing cheaper is
+reachable. A truck that starts empty fills at the origin, priced at the nearest
+station. An optional consolidation pass ("practical" mode) merges small top-ups
+into fewer stops for a small extra cost.
 """
 
 from dataclasses import dataclass
@@ -83,7 +86,7 @@ def _greedy_optimize_fuel(
     start_fuel: float = 0.0,
     origin_radius: float = 25.0,
 ) -> PlanResult:
-    """Compute optimal fuel purchase plan along route using pure greedy algorithm per Section 4.3."""
+    """Compute the minimum-cost fuel purchase plan along the route with the greedy algorithm."""
     if total_miles <= 0:
         return PlanResult(
             total_gallons=0.0,
